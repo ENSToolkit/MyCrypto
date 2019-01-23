@@ -131,14 +131,15 @@ class AddressInputFactoryClass extends Component<Props> {
               })
             }
           />
-          {showEnsResolution && (
-            <ENSStatus
-              ensAddress={currentTo.raw}
-              isLoading={isResolving}
-              rawAddress={addr}
-              chainId={chainId}
-            />
-          )}
+          {showEnsResolution &&
+            (isFocused || (isValid && isLabelEntry)) && (
+              <ENSStatus
+                ensAddress={currentTo.raw}
+                isLoading={isResolving}
+                rawAddress={addr}
+                chainId={chainId}
+              />
+            )}
           {isFocused &&
             !isENSAddress && (
               <AddressFieldDropdown
