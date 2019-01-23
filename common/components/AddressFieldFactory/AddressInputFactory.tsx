@@ -127,7 +127,7 @@ class AddressInputFactoryClass extends Component<Props> {
                 onChange,
                 onFocus,
                 onBlur,
-                readOnly: !!(readOnly || this.props.isResolving || isSelfAddress)
+                readOnly: !!(readOnly || isSelfAddress)
               })
             }
           />

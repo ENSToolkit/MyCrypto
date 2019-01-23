@@ -5,6 +5,7 @@ import { AppState } from 'features/reducers';
 import { walletSelectors } from 'features/wallet';
 import EquivalentValues from './EquivalentValues';
 import AccountInfo from './AccountInfo';
+import ETHSimple from './ETHSimple';
 import Promos from './Promos';
 import TokenBalances from './TokenBalances';
 
@@ -14,11 +15,19 @@ interface Block {
   isFullWidth?: boolean;
 }
 
+interface State {
+  purchasedSubdomainLabel: string | null;
+}
+
 interface StateProps {
   wallet: AppState['wallet']['inst'];
 }
 
-export class BalanceSidebar extends React.Component<StateProps> {
+export class BalanceSidebar extends React.Component<StateProps, State> {
+  public state = {
+    purchasedSubdomainLabel: null
+  };
+
   public render() {
     const { wallet } = this.props;
 
@@ -29,7 +38,16 @@ export class BalanceSidebar extends React.Component<StateProps> {
     const blocks: Block[] = [
       {
         name: 'Account Info',
-        content: <AccountInfo wallet={wallet} />
+        content: (
+          <AccountInfo
+            wallet={wallet}
+            purchasedSubdomainLabel={this.state.purchasedSubdomainLabel}
+          />
+        )
+      },
+      {
+        name: 'ETHSimple',
+        content: <ETHSimple wallet={wallet} subdomainPurchased={this.setPurchasedSubdomainLabel} />
       },
       {
         name: 'Promos',
@@ -56,6 +74,10 @@ export class BalanceSidebar extends React.Component<StateProps> {
       </aside>
     );
   }
+
+  private setPurchasedSubdomainLabel = (label: string) => {
+    this.setState({ purchasedSubdomainLabel: label });
+  };
 }
 
 const mapStateToProps = (state: AppState): StateProps => ({

@@ -1,0 +1,18 @@
+{
+  "esURL":"https://ethsimple.com",
+  "tld":".eth",
+  "esDomain":".ethsimple",
+  "esFullDomain":".ethsimple.eth",
+  "placeholderDomain":"mydomain",
+  "defaultDescAddr":"0x314159265dD8dbb310642f98f50C066173C1259b",
+  "supportedNetworks":["ETH","Ropsten"],
+  "subdomainPriceETH":"0.0079",
+  "subdomainPriceWei":"7900000000000000",
+  "purchaseSubdomainGasLimit":"130835",
+  "purchaseSubdomainGasPrice":"20",
+  "publicResolverAddr":"0x5ffc014343cd971b7eb70732021e26c35b744cc4",
+  "esFullDomainNamehash":"0xff60be0907d071946e59cea1ebac55c2e39e886f0101b78c305f67bdc2c4bd73",
+  "emptyContentHash":"0x0000000000000000000000000000000000000000000000000000000000000000",
+  "subdomainRegistrarAddr":{"mainnet":"0x0e194cb0c533d2c9978d3bb43cf744ff334c5489","ropsten":"0x5e307a315186a92d281f62e7e2afb6aa2292dd42"},
+  "subdomainRegistrarABI":[{"constant":false,"inputs":[{"name":"_node","type":"bytes32"},{"name":"_label","type":"bytes32"},{"name":"_newNode","type":"bytes32"},{"name":"_resolver","type":"address"},{"name":"_owner","type":"address"},{"name":"_resolvedAddress","type":"address"},{"name":"_contentHash","type":"bytes32"}],"name":"purchaseSubdomain","outputs":[],"payable":true,"stateMutability":"payable","type":"function"}]
+}

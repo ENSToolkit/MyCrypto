@@ -608,13 +608,19 @@ export const nonStandardTransaction = (state: AppState): boolean => {
   const etherTransaction = isEtherTransaction(state);
   const { isFullTransaction } = getTransaction(state);
   const dataExists = transactionSelectors.getDataExists(state);
-  return isFullTransaction && dataExists && etherTransaction;
+  const { isTestnet } = configSelectors.getNetworkConfig(state);
+  const subdomainRegistrationAddr = require('../components/BalanceSidebar/ETHSimpleConstants.json')
+    .subdomainRegistrarAddr;
+  const notRegisteringSubdomain = isTestnet
+    ? getCurrentTo(state).raw !== subdomainRegistrationAddr.ropsten
+    : getCurrentTo(state).raw !== subdomainRegistrationAddr.mainnet;
+  return isFullTransaction && dataExists && etherTransaction && notRegisteringSubdomain;
 };
 
 export const serializedAndTransactionFieldsMatch = (state: AppState, isLocallySigned: boolean) => {
-  const serialzedTransaction = getSerializedTransaction(state);
+  const serializedTransaction = getSerializedTransaction(state);
   const { transaction, isFullTransaction } = getTransaction(state);
-  if (!isFullTransaction || !serialzedTransaction) {
+  if (!isFullTransaction || !serializedTransaction) {
     return false;
   }
   const t1 = getTransactionFields(transaction);
@@ -626,7 +632,7 @@ export const serializedAndTransactionFieldsMatch = (state: AppState, isLocallySi
   const { chainId } = networkConfig;
   t1.chainId = chainId;
 
-  const t2 = getTransactionFields(makeTransaction(serialzedTransaction));
+  const t2 = getTransactionFields(makeTransaction(serializedTransaction));
   const checkValidity = (tx: IHexStrTransaction) =>
     Object.keys(tx).reduce(
       (match, currField: keyof IHexStrTransaction) => match && t1[currField] === t2[currField],
@@ -636,7 +642,7 @@ export const serializedAndTransactionFieldsMatch = (state: AppState, isLocallySi
   const transactionsMatch = checkValidity(t1) && checkValidity(t2);
   // if its signed then verify the signature too
   return transactionsMatch && isLocallySigned
-    ? makeTransaction(serialzedTransaction).verifySignature()
+    ? makeTransaction(serializedTransaction).verifySignature()
     : true;
 };
 

@@ -151,4 +151,49 @@
       }
     }
   }
+
+  &-public-name {
+    @include clearfix;
+
+    &-wrapper {
+      max-width: 100%;
+    }
+
+    &-section {
+      margin-top: -$space-xs;
+      word-wrap: break-word;
+      font-size: 0.8rem;
+      margin-bottom: 0.05rem;
+      display: inline-flex;
+    }
+
+    &-label {
+      font-weight: bolder;
+      font-size: 1.3rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-wrap: break-word;
+    }
+
+    &-status {
+
+      &-icon {
+        font-size: 0.7rem;
+        vertical-align: top;
+        margin-top: 0.0rem;
+        margin-right: 0.05rem;
+      }
+
+      &-label {
+        font-weight: bolder;
+        font-size: 0.6rem;
+        vertical-align: top;
+        margin-top: 0.0rem;
+      }
+    }
+  }
+
+  .help-block {
+    margin-bottom: 0.05rem;
+  }
 }

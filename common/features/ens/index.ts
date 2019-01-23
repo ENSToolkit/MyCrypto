@@ -3,6 +3,8 @@ import * as ensActions from './actions';
 import * as ensReducer from './reducer';
 import * as ensSelectors from './selectors';
 
+export * from './addressRequests';
+export * from './addressSelector';
 export * from './domainRequests';
 export * from './domainSelector';
 

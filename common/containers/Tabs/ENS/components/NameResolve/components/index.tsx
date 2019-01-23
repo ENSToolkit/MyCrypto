@@ -4,3 +4,5 @@ export { NameNotYetAvailable } from './NameNotYetAvailable';
 export { NameOpen } from './NameOpen';
 export { NameOwned } from './NameOwned';
 export { NameReveal } from './NameReveal';
+export { SubdomainNameOwned } from './SubdomainNameOwned';
+export { SubdomainNameUnregistered } from './SubdomainNameUnregistered';

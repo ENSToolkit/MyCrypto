@@ -2,11 +2,19 @@ import { SagaIterator } from 'redux-saga';
 import { select, apply, call } from 'redux-saga/effects';
 import ethUtil from 'ethereumjs-util';
 
+import networkConfigs from 'libs/ens/networkConfigs';
 import { INode } from 'libs/nodes/INode';
 import ENS from 'libs/ens/contracts';
-import { IDomainData, NameState, getNameHash, IBaseDomainRequest } from 'libs/ens';
+import {
+  IDomainData,
+  NameState,
+  getNameHash,
+  IBaseDomainRequest,
+  IBaseSubdomainRequest,
+  IBaseAddressRequest
+} from 'libs/ens';
 import * as configNodesSelectors from 'features/config/nodes/selectors';
-import { getENSTLD, getENSAddresses } from './selectors';
+import { getENSAddresses } from './selectors';
 
 //#region Make & Decode
 interface Params {
@@ -24,6 +32,8 @@ export function* makeEthCallAndDecode({ to, data, decoder }: Params): SagaIterat
 //#endregion Make & Decode
 
 //#region Mode Map
+const { ropsten, main } = networkConfigs;
+
 function* nameStateOwned({ deedAddress }: IDomainData<NameState.Owned>, nameHash: string) {
   const ensAddresses = yield select(getENSAddresses);
 
@@ -89,28 +99,122 @@ const modeMap: IModeMap = {
   [NameState.NotYetAvailable]: (_: IDomainData<NameState.NotYetAvailable>) => ({})
 };
 
-export function* resolveDomainRequest(name: string): SagaIterator {
-  const ensAddresses = yield select(getENSAddresses);
-  const ensTLD = yield select(getENSTLD);
-
+export function* resolveDomainRequest(name: string, testnet?: boolean): SagaIterator {
   const hash = ethUtil.sha3(name);
-  const nameHash = getNameHash(`${name}.${ensTLD}`);
+  const labelHash = hash.toString('hex');
+  const nameHash = getNameHash(`${name}.eth`);
+  const ensContracts = testnet ? ropsten : main;
 
-  const domainData: typeof ENS.auction.entries.outputType = yield call(makeEthCallAndDecode, {
-    to: ensAddresses.public.ethAuction,
-    data: ENS.auction.entries.encodeInput({ _hash: hash }),
-    decoder: ENS.auction.entries.decodeOutput
-  });
-  const nameStateHandler = modeMap[domainData.mode];
-  const result = yield call(nameStateHandler, domainData, nameHash);
+  // determine if subdomain
+  if (name.split('.').length < 2) {
+    const domainData: typeof ENS.auction.entries.outputType = yield call(makeEthCallAndDecode, {
+      to: ensContracts.public.ethAuction,
+      data: ENS.auction.entries.encodeInput({ _hash: hash }),
+      decoder: ENS.auction.entries.decodeOutput
+    });
+    const nameStateHandler = modeMap[domainData.mode];
+    const result = yield call(nameStateHandler, domainData, nameHash);
 
-  const returnValue: IBaseDomainRequest = {
+    const returnValue: IBaseDomainRequest = {
+      name,
+      ...domainData,
+      ...result,
+      labelHash,
+      nameHash
+    };
+    return returnValue;
+  } else {
+    const emptyField = '0x0000000000000000000000000000000000000000';
+    let resolvedAddress = '0x0';
+    let mode = NameState.Open;
+
+    const { ownerAddress }: typeof ENS.registry.owner.outputType = yield call(
+      makeEthCallAndDecode,
+      {
+        to: ensContracts.registry,
+        decoder: ENS.registry.owner.decodeOutput,
+        data: ENS.registry.owner.encodeInput({
+          node: nameHash
+        })
+      }
+    );
+
+    if (ownerAddress !== emptyField) {
+      mode = NameState.Owned;
+
+      const { resolverAddress }: typeof ENS.registry.resolver.outputType = yield call(
+        makeEthCallAndDecode,
+        {
+          to: ensContracts.registry,
+          decoder: ENS.registry.resolver.decodeOutput,
+          data: ENS.registry.resolver.encodeInput({
+            node: nameHash
+          })
+        }
+      );
+
+      if (resolverAddress !== emptyField) {
+        const result: typeof ENS.resolver.addr.outputType = yield call(makeEthCallAndDecode, {
+          to: resolverAddress,
+          data: ENS.resolver.addr.encodeInput({ node: nameHash }),
+          decoder: ENS.resolver.addr.decodeOutput
+        });
+
+        resolvedAddress = result.ret;
+      }
+    }
+
+    const returnValue: IBaseSubdomainRequest = {
+      name,
+      mode,
+      ownerAddress,
+      resolvedAddress,
+      labelHash,
+      nameHash
+    };
+    return returnValue;
+  }
+}
+//#endregion Mode Map
+
+export function* reverseResolveAddressRequest(address: string): SagaIterator {
+  const nameHash = getNameHash(`${address.slice(2)}.addr.reverse`);
+  const emptyField = '0x0000000000000000000000000000000000000000';
+
+  const { resolverAddress }: typeof ENS.registry.resolver.outputType = yield call(
+    makeEthCallAndDecode,
+    {
+      to: main.registry,
+      decoder: ENS.registry.resolver.decodeOutput,
+      data: ENS.registry.resolver.encodeInput({
+        node: nameHash
+      })
+    }
+  );
+
+  let name = '';
+  let claimed = false;
+
+  if (resolverAddress !== emptyField) {
+    const result: typeof ENS.reverse.name.outputType = yield call(makeEthCallAndDecode, {
+      to: resolverAddress,
+      data: ENS.reverse.name.encodeInput({
+        '0': nameHash
+      }),
+      decoder: ENS.reverse.name.decodeOutput
+    });
+
+    claimed = true;
+
+    if (!!result.name) {
+      name = result.name;
+    }
+  }
+
+  const returnValue: IBaseAddressRequest = {
+    address,
     name,
-    ...domainData,
-    ...result,
-    labelHash: ethUtil.addHexPrefix(hash.toString('hex')),
-    nameHash
+    claimed
   };
   return returnValue;
 }
-//#endregion Mode Map

@@ -82,9 +82,18 @@ export function isValidHex(str: string): boolean {
 
 export function isValidENSName(str: string) {
   try {
-    return (
-      str.length > 6 && !str.includes('.') && normalise(str) !== '' && str.substring(0, 2) !== '0x'
-    );
+    // determine if subdomain
+    if (str.includes('.')) {
+      const strArray = str.split('.');
+      for (const sub of strArray) {
+        if (normalise(sub) !== sub) {
+          return false;
+        }
+      }
+      return strArray[strArray.length - 1].length > 6 && str.substring(0, 2) !== '0x';
+    } else {
+      return str.length > 6 && normalise(str) !== '' && str.substring(0, 2) !== '0x';
+    }
   } catch (e) {
     return false;
   }

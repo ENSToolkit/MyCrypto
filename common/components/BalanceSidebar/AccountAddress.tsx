@@ -9,14 +9,19 @@ import {
   addressBookActions,
   addressBookSelectors
 } from 'features/addressBook';
+import { configSelectors } from 'features/config';
+import { ensActions } from 'features/ens';
 import { Address, Identicon, Input } from 'components/ui';
 
 interface StateProps {
   entry: ReturnType<typeof addressBookSelectors.getAccountAddressEntry>;
+  addressRequests: AppState['ens']['addressRequests'];
+  networkConfig: ReturnType<typeof configSelectors.getNetworkConfig>;
   addressLabel: string;
 }
 
 interface DispatchProps {
+  reverseResolveAddressRequested: ensActions.TReverseResolveAddressRequested;
   changeAddressLabelEntry: addressBookActions.TChangeAddressLabelEntry;
   saveAddressLabelEntry: addressBookActions.TSaveAddressLabelEntry;
   removeAddressLabelEntry: addressBookActions.TRemoveAddressLabelEntry;
@@ -24,6 +29,7 @@ interface DispatchProps {
 
 interface OwnProps {
   address: string;
+  purchasedSubdomainLabel: string | null;
 }
 
 type Props = StateProps & DispatchProps & OwnProps;
@@ -32,13 +38,15 @@ interface State {
   copied: boolean;
   editingLabel: boolean;
   labelInputTouched: boolean;
+  publicNameExists: boolean;
 }
 
 class AccountAddress extends React.Component<Props, State> {
   public state = {
     copied: false,
     editingLabel: false,
-    labelInputTouched: false
+    labelInputTouched: false,
+    publicNameExists: false
   };
 
   private goingToClearCopied: number | null = null;
@@ -59,13 +67,26 @@ class AccountAddress extends React.Component<Props, State> {
     }
   }
 
+  public componentDidUpdate(prevProps: Props) {
+    const { address, networkConfig, reverseResolveAddressRequested, addressRequests } = this.props; // addressRequests,
+    if (address !== prevProps.address && !networkConfig.isTestnet) {
+      reverseResolveAddressRequested(address, false);
+    }
+    if (addressRequests !== prevProps.addressRequests) {
+      const req = addressRequests[address];
+      this.setState({
+        publicNameExists: !!req && !!req.data && req.data.name.length > 0
+      });
+    }
+  }
+
   public render() {
     const { address, addressLabel } = this.props;
-    const { copied } = this.state;
+    const { copied, publicNameExists } = this.state;
     const labelContent = this.generateLabelContent();
     const labelButton = this.generateLabelButton();
     const addressClassName = `AccountInfo-address-addr ${
-      addressLabel ? 'AccountInfo-address-addr--small' : ''
+      addressLabel || publicNameExists ? 'AccountInfo-address-addr--small' : ''
     }`;
 
     return (
@@ -114,8 +135,13 @@ class AccountAddress extends React.Component<Props, State> {
   private setLabelInputRef = (node: HTMLInputElement) => (this.labelInput = node);
 
   private generateLabelContent = () => {
-    const { addressLabel, entry: { temporaryLabel, labelError } } = this.props;
-    const { editingLabel, labelInputTouched } = this.state;
+    const {
+      address,
+      addressLabel,
+      entry: { temporaryLabel, labelError },
+      addressRequests
+    } = this.props;
+    const { editingLabel, labelInputTouched, publicNameExists } = this.state;
     const newLabelSameAsPrevious = temporaryLabel === addressLabel;
     const labelInputTouchedWithError = labelInputTouched && !newLabelSameAsPrevious && labelError;
 
@@ -141,8 +167,28 @@ class AccountAddress extends React.Component<Props, State> {
           )}
         </React.Fragment>
       );
+    } else if (publicNameExists) {
+      const label = addressRequests[address].data.name;
+      const status = translate('ENS_REVERSE_RESOLVE_NAME_PUBLIC');
+      labelContent = (
+        <div className="AccountInfo-public-name-wrapper">
+          <div className="AccountInfo-public-name-section help-block">
+            <label className="AccountInfo-public-name-label">{label}</label>
+            <i className="AccountInfo-public-name-status-icon fa fa-check is-valid help-block" />
+            <span className="AccountInfo-public-name-status-label is-valid help-block">
+              {status}
+            </span>
+          </div>
+        </div>
+      );
     } else {
-      labelContent = <label className="AccountInfo-address-label">{addressLabel}</label>;
+      labelContent = (
+        <React.Fragment>
+          {addressLabel.length > 0 && (
+            <label className="AccountInfo-address-label">{addressLabel}</label>
+          )}
+        </React.Fragment>
+      );
     }
 
     return labelContent;
@@ -248,12 +294,15 @@ const mapStateToProps: MapStateToProps<StateProps, {}, AppState> = (
 ) => {
   const labelEntry = addressBookSelectors.getAddressLabelEntryFromAddress(state, ownProps.address);
   return {
+    addressRequests: state.ens.addressRequests,
+    networkConfig: configSelectors.getNetworkConfig(state),
     entry: addressBookSelectors.getAccountAddressEntry(state),
     addressLabel: labelEntry ? labelEntry.label : ''
   };
 };
 
 const mapDispatchToProps: DispatchProps = {
+  reverseResolveAddressRequested: ensActions.reverseResolveAddressRequested,
   changeAddressLabelEntry: addressBookActions.changeAddressLabelEntry,
   saveAddressLabelEntry: addressBookActions.saveAddressLabelEntry,
   removeAddressLabelEntry: addressBookActions.removeAddressLabelEntry

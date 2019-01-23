@@ -15,6 +15,10 @@ const resolverABI = require('./resolver/resolver.json');
 import resolverOutputMappings from './resolver/outputMappings';
 import { IResolver } from './resolver/resolver';
 
+const reverseABI = require('./reverse/reverse.json');
+import reverseOutputMappings from './reverse/outputMappings';
+import { IReverse } from './reverse/reverse';
+
 const auction: IAuction & Contract = new Contract(auctionABI, auctionOutputMappings) as any;
 
 const deed: IDeed & Contract = new Contract(deedABI, deedOutputMappings) as any;
@@ -23,4 +27,6 @@ const registry: IRegistry & Contract = new Contract(registryABI, registryOutputM
 
 const resolver: IResolver & Contract = new Contract(resolverABI, resolverOutputMappings) as any;
 
-export default { auction, deed, registry, resolver };
+const reverse: IReverse & Contract = new Contract(reverseABI, reverseOutputMappings) as any;
+
+export default { auction, deed, registry, resolver, reverse };

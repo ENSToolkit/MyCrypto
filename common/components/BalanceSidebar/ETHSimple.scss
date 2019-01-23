@@ -1,0 +1,85 @@
+@import 'common/sass/variables';
+@import 'common/sass/mixins';
+
+.ETHSimple {
+
+  &-title {
+    margin-top: 0px;
+  }
+
+  &-name {
+  	margin-bottom: 0.4rem;
+
+  	&-input {
+      width: 100px !important
+    }
+  }
+
+  &-button {
+  	margin-bottom: 0.4rem;
+  }
+
+  &-logo {
+    float: right;
+    max-width: 130px;
+    width: 100%;
+    height: 32px;
+    background-image: url('~assets/images/ethsimple-banner.png');
+    background-repeat: no-repeat;
+    display: block;
+    background-size: cover;
+    margin-top: 3px;
+
+    @include theme('dark') {
+      background-image: url('~assets/images/ethsimple-banner-inverted.png');
+    }
+  }
+
+  &-description {
+	  overflow-x: hidden;
+    text-overflow: ellipsis;
+    font-weight: 300;
+    font-size: 16px;
+    padding: 2px 0 6px;
+    text-align: left;
+    line-height: 1.7;
+  }
+
+  &-status {
+  	margin-bottom: 0.4rem;
+  }
+
+  &-section {
+    margin: $space 0;
+
+    &-refresh {
+      background: transparent;
+      border: none;
+      padding: 0;
+      height: 1.4rem;
+      width: 1.2rem;
+      opacity: 0.3;
+      transition: opacity 0.3s;
+      margin-left: 0.1rem;
+      > img {
+        height: inherit;
+        width: inherit;
+        vertical-align: top;
+      }
+      &:hover {
+        opacity: 0.54;
+      }
+      &:active {
+        transition: opacity 120ms;
+        opacity: 1;
+      }
+    }
+  }
+}
+
+.vcenter-sm {
+  @media (min-width: $screen-lg) {
+    display: flex;
+    align-items: center;
+  }
+}

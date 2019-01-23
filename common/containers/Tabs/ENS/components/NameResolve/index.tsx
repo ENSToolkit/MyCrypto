@@ -1,7 +1,7 @@
 import React from 'react';
 import { connect } from 'react-redux';
 
-import { NameState } from 'libs/ens';
+import { NameState, IBaseDomainRequest, IBaseSubdomainRequest } from 'libs/ens';
 import { AppState } from 'features/reducers';
 import { Spinner } from 'components/ui';
 import {
@@ -10,7 +10,9 @@ import {
   NameForbidden,
   NameNotYetAvailable,
   NameOpen,
-  NameReveal
+  NameReveal,
+  SubdomainNameUnregistered,
+  SubdomainNameOwned
 } from './components';
 import './NameResolve.scss';
 
@@ -25,6 +27,17 @@ const modeResult = {
   [NameState.Reveal]: NameReveal
 };
 
+const subdomainModeResult = {
+  [NameState.Open]: SubdomainNameUnregistered,
+  [NameState.Owned]: SubdomainNameOwned
+};
+
+function isDomainRequest(
+  request: IBaseDomainRequest | IBaseSubdomainRequest
+): request is IBaseDomainRequest {
+  return (request as IBaseDomainRequest).value !== undefined;
+}
+
 const NameResolve: React.SFC<Props> = props => {
   const { domainRequests, domainSelector } = props;
   const { currentDomain } = domainSelector;
@@ -37,8 +50,9 @@ const NameResolve: React.SFC<Props> = props => {
   let content;
 
   if (domainData) {
-    const Component: any = modeResult[domainData.mode];
-
+    const Component = isDomainRequest(domainData)
+      ? modeResult[domainData.mode]
+      : subdomainModeResult[domainData.mode];
     content = <Component {...domainData} />;
   } else {
     content = (

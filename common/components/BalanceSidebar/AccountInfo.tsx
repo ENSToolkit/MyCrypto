@@ -15,6 +15,7 @@ import './AccountInfo.scss';
 
 interface OwnProps {
   wallet: IWallet;
+  purchasedSubdomainLabel: string | null;
 }
 
 interface StateProps {
@@ -74,7 +75,14 @@ class AccountInfo extends React.Component<Props, State> {
   };
 
   public render() {
-    const { network, isOffline, balance, toChecksumAddress, wallet } = this.props;
+    const {
+      network,
+      isOffline,
+      balance,
+      toChecksumAddress,
+      wallet,
+      purchasedSubdomainLabel
+    } = this.props;
     const { address, showLongBalance, confirmAddr } = this.state;
 
     let blockExplorer;
@@ -87,7 +95,10 @@ class AccountInfo extends React.Component<Props, State> {
 
     return (
       <div>
-        <AccountAddress address={toChecksumAddress(address)} />
+        <AccountAddress
+          address={toChecksumAddress(address)}
+          purchasedSubdomainLabel={purchasedSubdomainLabel}
+        />
 
         {isHardwareWallet(wallet) && (
           <div className="AccountInfo-section">
