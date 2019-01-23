@@ -141,12 +141,6 @@ class ETHSimpleClass extends React.Component<Props, State> {
     }
   }
 
-  private setAddress = () => {
-    const { toChecksumAddress, wallet } = this.props;
-    const address = toChecksumAddress(wallet.getAddressString());
-    this.setState({ address });
-  };
-
   public render() {
     const { subdomain, address } = this.state;
     const { domainRequests, networkConfig } = this.props;
@@ -192,15 +186,25 @@ class ETHSimpleClass extends React.Component<Props, State> {
     );
   }
 
+  public UNSAFE_componentWillReceiveProps(nextProps: Props) {
+    if (nextProps.transactionBroadcasted && this.state.showModal) {
+      this.closeModal(false);
+    }
+  }
+
+  private setAddress = () => {
+    const { toChecksumAddress, wallet } = this.props;
+    const address = toChecksumAddress(wallet.getAddressString());
+    this.setState({ address });
+  };
+
   private generateDescription = (): React.ReactElement<any> => {
     const { address, subdomain } = this.state;
     const { networkConfig } = this.props;
     const { supportedNetworks, esFullDomain, placeholderDomain, defaultDescAddr } = constants;
     const addressToDisplay = address.length > 0 ? address : defaultDescAddr;
     const domainName =
-      subdomain.length > 0
-        ? ((subdomain + esFullDomain) as string)
-        : ((placeholderDomain + esFullDomain) as string);
+      subdomain.length > 0 ? subdomain + esFullDomain : placeholderDomain + esFullDomain;
     const cutoff = subdomain.length > 0 && subdomain.length < 5 ? 0 : 15;
     const addr =
       addressToDisplay.substring(0, addressToDisplay.length - cutoff) + (cutoff > 0 ? '...' : '');
@@ -694,12 +698,6 @@ class ETHSimpleClass extends React.Component<Props, State> {
     }
     this.setState({ showModal: true });
   };
-
-  public UNSAFE_componentWillReceiveProps(nextProps: Props) {
-    if (nextProps.transactionBroadcasted && this.state.showModal) {
-      this.closeModal(false);
-    }
-  }
 
   private cancelModal = () => this.closeModal(true);
 
