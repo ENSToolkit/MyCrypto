@@ -17,6 +17,17 @@
 
   &-button {
   	margin-bottom: 0.4rem;
+
+  	@media screen and (min-width: 800px) {
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+  }
+
+  &-button-title {
+		overflow-x: hidden;
+    text-overflow: ellipsis;
+    display: block;
   }
 
   &-logo {
@@ -81,5 +92,35 @@
   @media (min-width: $screen-lg) {
     display: flex;
     align-items: center;
+  }
+}
+
+@media only screen and (max-width: $screen-lg){
+  .ETHSimple-button-title {
+    font-size: 0.9rem;
+  }
+
+  .ETHSimple-name {
+    font-size: 0.9rem;
+  }
+}
+
+@media only screen and (max-width: $screen-md){
+  .ETHSimple-button-title {
+    font-size: 0.8rem;
+  }
+
+  .ETHSimple-name {
+    font-size: 0.8rem;
+  }
+}
+
+@media only screen and (max-width: $screen-sm){
+  .ETHSimple-button-title {
+    font-size: 1.0rem;
+  }
+
+  .ETHSimple-name {
+    font-size: 1.0rem;
   }
 }
