@@ -37,15 +37,6 @@ export interface IBaseDomainRequest {
   mappedMode: string;
 }
 
-export interface IBaseSubdomainRequest {
-  name: string;
-  labelHash: string;
-  mode: NameState;
-  nameHash: string;
-  ownerAddress: string;
-  resolvedAddress: string;
-}
-
 export interface IOwnedDomainRequest extends IBaseDomainRequest {
   ownerAddress: string;
   resolvedAddress: string;
@@ -53,6 +44,15 @@ export interface IOwnedDomainRequest extends IBaseDomainRequest {
 
 export interface IRevealDomainRequest extends IBaseDomainRequest {
   ownerAddress: string;
+}
+
+export interface IBaseSubdomainRequest {
+  name: string;
+  labelHash: string;
+  mode: NameState;
+  nameHash: string;
+  ownerAddress: string;
+  resolvedAddress: string;
 }
 
 export type DomainRequest =

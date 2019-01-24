@@ -426,11 +426,12 @@ class ETHSimpleClass extends React.Component<Props, State> {
    */
   private purchaseSubdomain = (ev: React.FormEvent<HTMLElement>) => {
     const { autoGasLimit, toggleAutoGasLimit, gasEstimation } = this.props;
+    const gasEstimateRequested = gasEstimation === transactionNetworkTypes.RequestStatus.REQUESTED;
     ev.preventDefault();
     if (autoGasLimit) {
       toggleAutoGasLimit();
     }
-    if (gasEstimation === transactionNetworkTypes.RequestStatus.REQUESTED) {
+    if (gasEstimateRequested) {
       return;
     }
     this.setState(

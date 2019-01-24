@@ -1,7 +1,7 @@
 import React from 'react';
 import { connect } from 'react-redux';
 
-import { NameState, IBaseDomainRequest, IBaseSubdomainRequest } from 'libs/ens';
+import { NameState } from 'libs/ens';
 import { AppState } from 'features/reducers';
 import { Spinner } from 'components/ui';
 import {
@@ -30,13 +30,7 @@ const modeResult = {
 const subdomainModeResult = {
   [NameState.Open]: SubdomainNameUnregistered,
   [NameState.Owned]: SubdomainNameOwned
-};
-
-function isDomainRequest(
-  request: IBaseDomainRequest | IBaseSubdomainRequest
-): request is IBaseDomainRequest {
-  return (request as IBaseDomainRequest).value !== undefined;
-}
+} as any;
 
 const NameResolve: React.SFC<Props> = props => {
   const { domainRequests, domainSelector } = props;
@@ -50,7 +44,7 @@ const NameResolve: React.SFC<Props> = props => {
   let content;
 
   if (domainData) {
-    const Component = isDomainRequest(domainData)
+    const Component: any = !domainData.name.includes('.')
       ? modeResult[domainData.mode]
       : subdomainModeResult[domainData.mode];
     content = <Component {...domainData} />;

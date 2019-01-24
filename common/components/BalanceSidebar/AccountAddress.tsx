@@ -38,7 +38,7 @@ interface State {
   copied: boolean;
   editingLabel: boolean;
   labelInputTouched: boolean;
-  publicNameExists: boolean;
+  publicName: string | null;
 }
 
 class AccountAddress extends React.Component<Props, State> {
@@ -46,7 +46,7 @@ class AccountAddress extends React.Component<Props, State> {
     copied: false,
     editingLabel: false,
     labelInputTouched: false,
-    publicNameExists: false
+    publicName: null
   };
 
   private goingToClearCopied: number | null = null;
@@ -74,19 +74,18 @@ class AccountAddress extends React.Component<Props, State> {
     }
     if (addressRequests !== prevProps.addressRequests) {
       const req = addressRequests[address];
-      this.setState({
-        publicNameExists: !!req && !!req.data && req.data.name.length > 0
-      });
+      const publicName = !!req && !!req.data && req.data.name.length > 0 ? req.data.name : null;
+      this.setState({ publicName });
     }
   }
 
   public render() {
     const { address, addressLabel } = this.props;
-    const { copied, publicNameExists } = this.state;
+    const { copied, publicName } = this.state;
     const labelContent = this.generateLabelContent();
     const labelButton = this.generateLabelButton();
     const addressClassName = `AccountInfo-address-addr ${
-      addressLabel || publicNameExists ? 'AccountInfo-address-addr--small' : ''
+      addressLabel || !!publicName ? 'AccountInfo-address-addr--small' : ''
     }`;
 
     return (
@@ -135,13 +134,8 @@ class AccountAddress extends React.Component<Props, State> {
   private setLabelInputRef = (node: HTMLInputElement) => (this.labelInput = node);
 
   private generateLabelContent = () => {
-    const {
-      address,
-      addressLabel,
-      entry: { temporaryLabel, labelError },
-      addressRequests
-    } = this.props;
-    const { editingLabel, labelInputTouched, publicNameExists } = this.state;
+    const { addressLabel, entry: { temporaryLabel, labelError } } = this.props;
+    const { editingLabel, labelInputTouched, publicName } = this.state;
     const newLabelSameAsPrevious = temporaryLabel === addressLabel;
     const labelInputTouchedWithError = labelInputTouched && !newLabelSameAsPrevious && labelError;
 
@@ -167,8 +161,8 @@ class AccountAddress extends React.Component<Props, State> {
           )}
         </React.Fragment>
       );
-    } else if (publicNameExists) {
-      const label = addressRequests[address].data.name;
+    } else if (!!publicName) {
+      const label = publicName;
       const status = translate('ENS_REVERSE_RESOLVE_NAME_PUBLIC');
       labelContent = (
         <div className="AccountInfo-public-name-wrapper">
