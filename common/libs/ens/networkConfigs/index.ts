@@ -18,6 +18,8 @@ export interface ITLDCollection {
 
 export function getENSAddressesForChain(chainId: number): IEnsAddresses {
   switch (chainId) {
+    case 3:
+      return ropsten;
     case 30:
       return rsk;
     default:

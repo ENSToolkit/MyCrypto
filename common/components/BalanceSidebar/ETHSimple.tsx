@@ -386,7 +386,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
    * callback requests resolution of valid domains
    */
   private onChange = (event: React.FormEvent<HTMLInputElement>) => {
-    const { resolveDomain, network, resetTx } = this.props;
+    const { resolveDomain, resetTx } = this.props;
     const enteredSubdomain = event.currentTarget.value.trim().toLowerCase();
     const subdomain = isValidENSName(enteredSubdomain + constants.esDomain)
       ? normalise(enteredSubdomain)
@@ -398,9 +398,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
         purchaseMode: false
       },
       () => {
-        subdomain.length > 0
-          ? resolveDomain(subdomain + constants.esDomain, network.isTestnet)
-          : resetTx();
+        subdomain.length > 0 ? resolveDomain(subdomain + constants.esDomain) : resetTx();
       }
     );
   };
@@ -669,8 +667,8 @@ class ETHSimpleClass extends React.Component<Props, State> {
    * @desc Refresh the resolution data for a recently registered domain name
    */
   private refreshDomainResolution = () => {
-    const { resolveDomain, network } = this.props;
-    resolveDomain(this.state.subdomain + constants.esDomain, network.isTestnet, true);
+    const { resolveDomain } = this.props;
+    resolveDomain(this.state.subdomain + constants.esDomain, true);
   };
 
   /**

@@ -2,7 +2,6 @@ import { SagaIterator } from 'redux-saga';
 import { select, apply, call } from 'redux-saga/effects';
 import ethUtil from 'ethereumjs-util';
 
-import networkConfigs from 'libs/ens/networkConfigs';
 import { INode } from 'libs/nodes/INode';
 import ENS from 'libs/ens/contracts';
 import {
@@ -14,7 +13,7 @@ import {
   IBaseAddressRequest
 } from 'libs/ens';
 import * as configNodesSelectors from 'features/config/nodes/selectors';
-import { getENSAddresses } from './selectors';
+import { getENSTLD, getENSAddresses } from './selectors';
 
 //#region Make & Decode
 interface Params {
@@ -32,7 +31,6 @@ export function* makeEthCallAndDecode({ to, data, decoder }: Params): SagaIterat
 //#endregion Make & Decode
 
 //#region Mode Map
-const { ropsten, main } = networkConfigs;
 
 function* nameStateOwned({ deedAddress }: IDomainData<NameState.Owned>, nameHash: string) {
   const ensAddresses = yield select(getENSAddresses);
@@ -99,16 +97,18 @@ const modeMap: IModeMap = {
   [NameState.NotYetAvailable]: (_: IDomainData<NameState.NotYetAvailable>) => ({})
 };
 
-export function* resolveDomainRequest(name: string, testnet?: boolean): SagaIterator {
+export function* resolveDomainRequest(name: string): SagaIterator {
+  const ensAddresses = yield select(getENSAddresses);
+  const ensTLD = yield select(getENSTLD);
+
   const hash = ethUtil.sha3(name);
-  const labelHash = hash.toString('hex');
-  const nameHash = getNameHash(`${name}.eth`);
-  const ensContracts = testnet ? ropsten : main;
+  const labelHash = ethUtil.addHexPrefix(hash.toString('hex')); // hash.toString('hex');
+  const nameHash = getNameHash(`${name}.${ensTLD}`);
 
   // determine if subdomain
   if (name.split('.').length < 2) {
     const domainData: typeof ENS.auction.entries.outputType = yield call(makeEthCallAndDecode, {
-      to: ensContracts.public.ethAuction,
+      to: ensAddresses.public.ethAuction,
       data: ENS.auction.entries.encodeInput({ _hash: hash }),
       decoder: ENS.auction.entries.decodeOutput
     });
@@ -131,7 +131,7 @@ export function* resolveDomainRequest(name: string, testnet?: boolean): SagaIter
     const { ownerAddress }: typeof ENS.registry.owner.outputType = yield call(
       makeEthCallAndDecode,
       {
-        to: ensContracts.registry,
+        to: ensAddresses.registry,
         decoder: ENS.registry.owner.decodeOutput,
         data: ENS.registry.owner.encodeInput({
           node: nameHash
@@ -145,7 +145,7 @@ export function* resolveDomainRequest(name: string, testnet?: boolean): SagaIter
       const { resolverAddress }: typeof ENS.registry.resolver.outputType = yield call(
         makeEthCallAndDecode,
         {
-          to: ensContracts.registry,
+          to: ensAddresses.registry,
           decoder: ENS.registry.resolver.decodeOutput,
           data: ENS.registry.resolver.encodeInput({
             node: nameHash
@@ -178,13 +178,14 @@ export function* resolveDomainRequest(name: string, testnet?: boolean): SagaIter
 //#endregion Mode Map
 
 export function* reverseResolveAddressRequest(address: string): SagaIterator {
+  const ensAddresses = yield select(getENSAddresses);
   const nameHash = getNameHash(`${address.slice(2)}.addr.reverse`);
   const emptyField = '0x0000000000000000000000000000000000000000';
 
   const { resolverAddress }: typeof ENS.registry.resolver.outputType = yield call(
     makeEthCallAndDecode,
     {
-      to: main.registry,
+      to: ensAddresses.registry,
       decoder: ENS.registry.resolver.decodeOutput,
       data: ENS.registry.resolver.encodeInput({
         node: nameHash
