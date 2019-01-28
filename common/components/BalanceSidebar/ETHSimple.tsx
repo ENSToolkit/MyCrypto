@@ -6,7 +6,7 @@ import BN from 'bn.js';
 
 import { TransactionReceipt } from 'types/transactions';
 import { AppState } from 'features/reducers';
-import { ensActions, ensSelectors, ensDomainRequestsTypes } from 'features/ens';
+import { ensActions, ensDomainRequestsTypes } from 'features/ens';
 import { gasSelectors } from 'features/gas';
 import { configSelectors, configMetaActions } from 'features/config';
 import { configMetaSelectors } from 'features/config/meta';
@@ -42,7 +42,6 @@ interface StateProps {
   nonceStatus: AppState['transaction']['network']['getNonceStatus'];
   gasEstimation: AppState['transaction']['network']['gasEstimationStatus'];
   notifications: AppState['notifications'];
-  isResolving: boolean | null;
   network: ReturnType<typeof configSelectors.getNetworkConfig>;
   checksum: ReturnType<typeof configSelectors.getChecksumAddressFn>;
   txDatas: AppState['transactions']['txData'];
@@ -51,7 +50,6 @@ interface StateProps {
   signedTx: boolean;
   isFullTransaction: boolean;
   currentTxStatus: false | transactionBroadcastTypes.ITransactionStatus | null;
-  serializedTx: Buffer | null;
   transaction: EthTx;
   etherBalance: AppState['wallet']['balance']['wei'];
   gasEstimates: AppState['gas']['estimates'];
@@ -125,16 +123,8 @@ class ETHSimpleClass extends React.Component<Props, State> {
   }
 
   public componentDidUpdate(prevProps: Props) {
-    const {
-      txDatas,
-      currentTxStatus,
-      wallet,
-      network,
-      domainRequests,
-      resolveDomain,
-      serializedTx
-    } = this.props;
-    const { pollTimeout, purchaseMode, subdomain, address, txFailed } = this.state;
+    const { txDatas, currentTxStatus, wallet, network, domainRequests, resolveDomain } = this.props;
+    const { pollTimeout, purchaseMode, subdomain, address } = this.state;
     if (wallet !== prevProps.wallet || network !== prevProps.network) {
       this.setAddress();
     }
@@ -154,19 +144,8 @@ class ETHSimpleClass extends React.Component<Props, State> {
       }
     }
     if (purchaseMode) {
-      // if (this.signTxIntended() && this.txFieldsValid()) {
-      //   this.signTx();
-      // }
-      if (this.txFieldsValid()) {
-        if (this.signTxIntended()) {
-          this.signTx();
-        } else if (
-          txFailed &&
-          !!currentTxStatus &&
-          serializedTx === currentTxStatus.serializedTransaction
-        ) {
-          this.openModal();
-        }
+      if (this.signTxIntended() && this.txFieldsValid()) {
+        this.signTx();
       }
       if (currentTxStatus !== prevProps.currentTxStatus) {
         if (this.txBroadcastSuccessful()) {
@@ -790,7 +769,6 @@ function mapStateToProps(state: AppState): StateProps {
   return {
     etherBalance: walletSelectors.getEtherBalance(state),
     domainRequests: state.ens.domainRequests,
-    isResolving: ensSelectors.getResolvingDomain(state),
     nonceStatus: transactionNetworkSelectors.getNetworkStatus(state).getNonceStatus,
     gasEstimation: transactionNetworkSelectors.getNetworkStatus(state).gasEstimationStatus,
     network: configSelectors.getNetworkConfig(state),
@@ -804,7 +782,6 @@ function mapStateToProps(state: AppState): StateProps {
     currentTxStatus: transactionSelectors.getCurrentTransactionStatus(state),
     txBroadcasted: transactionSelectors.currentTransactionBroadcasted(state),
     signaturePending: derivedSelectors.signaturePending(state).isSignaturePending,
-    serializedTx: derivedSelectors.getSerializedTransaction(state),
     signedTx:
       !!transactionSignSelectors.getSignedTx(state) || !!transactionSignSelectors.getWeb3Tx(state)
   };
