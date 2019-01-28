@@ -576,8 +576,8 @@ class AccountAddress extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Sets the fields of the tx singleton with the desired parameters of 
-   a new setName tx and requests the nonce if needed
+   * @desc Sets the fields of the tx singleton with the desired parameters of
+   * a new setName tx and requests the nonce if needed
    */
   private setTxFields = () => {
     const {
@@ -655,7 +655,7 @@ class AccountAddress extends React.Component<Props, State> {
   /**
    *
    * @desc Returns true if the set public name button has been clicked, a signature is not
-    pending, the tx has not been signed, and gas estimation has not been requested
+   * pending, the tx has not been signed, and gas estimation has not been requested
    * @returns {boolean}
    */
   private signTxIntended = (): boolean => {
@@ -707,8 +707,8 @@ class AccountAddress extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Returns true if the recent tx was successfully broadcasted 
-   and the tx confirmation poll has not been started
+   * @desc Returns true if the recent tx was successfully broadcasted
+   * and the tx confirmation poll has not been started
    * @returns {boolean}
    */
   private txBroadcastSuccessful = (): boolean => {
@@ -745,8 +745,8 @@ class AccountAddress extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Returns true if the recent tx was successfully broadcasted 
-   and the tx receipt has been retrieved and shows a success status
+   * @desc Returns true if the recent tx was successfully broadcasted
+   * and the tx receipt has been retrieved and shows a success status
    * @returns {boolean}
    */
   private txConfirmed = (): boolean => {
@@ -764,8 +764,8 @@ class AccountAddress extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Close the tx broadcasted notification, show the tx confirmed notification, 
-   refresh the account's balance, and refresh the address' reverse resolved data
+   * @desc Close the tx broadcasted notification, show the tx confirmed notification,
+   * refresh the account's balance, and refresh the address' reverse resolved data
    */
   private setNameComplete = () => {
     const { refreshBalance } = this.props;
@@ -830,7 +830,7 @@ class AccountAddress extends React.Component<Props, State> {
   /**
    *
    * @desc Close the tx confirmation modal, if closedByUser then
-   enable the set public name button. Toggle auto gas estimation
+   * enable the set public name button. Toggle auto gas estimation
    */
   private closeModal = (closedByUser: boolean) => {
     const { autoGasLimit, toggleAutoGasLimit } = this.props;
