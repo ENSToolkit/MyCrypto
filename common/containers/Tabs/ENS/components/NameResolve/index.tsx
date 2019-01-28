@@ -30,7 +30,7 @@ const modeResult = {
 const subdomainModeResult = {
   [NameState.Open]: SubdomainNameUnregistered,
   [NameState.Owned]: SubdomainNameOwned
-};
+} as any;
 
 function isDomainRequest(
   request: IBaseDomainRequest | IBaseSubdomainRequest
