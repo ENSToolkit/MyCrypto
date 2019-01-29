@@ -26,16 +26,19 @@ import { transactionNetworkTypes } from 'features/transaction/network';
 import { transactionsActions, transactionsSelectors } from 'features/transactions';
 import { walletSelectors, walletActions } from 'features/wallet';
 import { IWallet } from 'libs/wallet';
-import { normalise, getNameHash, NameState, IBaseSubdomainRequest } from 'libs/ens';
+import { getNameHash, NameState, IBaseSubdomainRequest } from 'libs/ens';
 import Contract from 'libs/contracts';
 import { Address, Wei, handleValues, gasPriceToBase, fromWei } from 'libs/units';
-import { isValidENSName } from 'libs/validators';
 import { getTransactionFields } from 'libs/transaction/utils/ether';
-import { Input, Spinner } from 'components/ui';
 import { ConfirmationModal } from 'components/ConfirmationModal';
 import { translate, translateRaw } from 'translations';
-import './ETHSimple.scss';
-const constants = require('./ETHSimpleConstants.json');
+import {
+  ETHSimpleDescription,
+  ETHSimpleSubdomainInput,
+  ETHSimpleStatus
+} from './ETHSimpleComponents';
+import './ETHSimpleComponents/ETHSimple.scss';
+const constants = require('./ETHSimpleComponents/ETHSimpleConstants.json');
 
 interface StateProps {
   domainRequests: AppState['ens']['domainRequests'];
@@ -67,7 +70,6 @@ interface DispatchProps {
   inputGasLimit: transactionFieldsActions.TInputGasLimit;
   inputGasPrice: transactionFieldsActions.TInputGasPrice;
   getNonce: transactionNetworkActions.TGetNonceRequested;
-  resetTx: transactionFieldsActions.TResetTransactionRequested;
   signTx: transactionSignActions.TSignTransactionRequested;
   fetchTxData: transactionsActions.TFetchTransactionData;
   refreshBalance: walletActions.TRefreshAccountBalance;
@@ -91,8 +93,6 @@ interface State {
   pollTimeout: boolean;
   showModal: boolean;
   broadcastedHash: string;
-  lastKeystrokeTime: number;
-  resolutionDelay: number;
   isComplete: boolean;
   isAvailable: boolean;
   isOwnedBySelf: boolean;
@@ -110,8 +110,6 @@ class ETHSimpleClass extends React.Component<Props, State> {
     pollTimeout: false,
     showModal: false,
     broadcastedHash: '',
-    lastKeystrokeTime: Date.now(),
-    resolutionDelay: 500,
     isComplete: false,
     isAvailable: false,
     isOwnedBySelf: false,
@@ -169,29 +167,63 @@ class ETHSimpleClass extends React.Component<Props, State> {
   }
 
   public render() {
-    const title = translate('ETHSIMPLE_TITLE');
-    const description = this.generateDescription();
-    const subdomainInputField = this.generateSubdomainInputField();
-    const purchaseButton = this.generatePurchaseButton();
-    const statusLabel = this.generateStatusLabel();
-    const modal = this.generateModal();
-    const esLogoButton = this.generateESLogoButton();
-    const component = constants.supportedNetworks.includes(this.props.network.id) ? (
-      <div>
-        <form className="ETHSimpleInput" onSubmit={this.purchaseSubdomain}>
-          {subdomainInputField}
-          {purchaseButton}
-        </form>
-        {statusLabel}
-        {modal}
-      </div>
-    ) : null;
+    const {
+      address,
+      subdomain,
+      enteredSubdomain,
+      purchaseMode,
+      pollInitiated,
+      isComplete,
+      isAvailable,
+      isOwnedBySelf,
+      showModal
+    } = this.state;
+    const { network, signaturePending, signedTx } = this.props;
+    const { supportedNetworks, subdomainPriceETH, esURL } = constants;
+    const isValidSubdomain = enteredSubdomain === subdomain;
     return (
       <div className="ETHSimple">
-        <h5 className="ETHSimple-title">{title}</h5>
-        <div className="ETHSimple-description">{description}</div>
-        {component}
-        {esLogoButton}
+        <h5 className="ETHSimple-title">{translate('ETHSIMPLE_TITLE')}</h5>
+        <ETHSimpleDescription address={address} subdomain={subdomain} />
+        {supportedNetworks.includes(network.id) ? (
+          <div>
+            <ETHSimpleSubdomainInput
+              address={address}
+              subdomainChanged={this.subdomainChanged}
+              purchaseSubdomain={this.purchaseSubdomain}
+            />
+            <button
+              className="ETHSimple-button btn btn-primary btn-block"
+              disabled={this.purchaseDisabled()}
+              onClick={this.purchaseSubdomain}
+            >
+              <label className="ETHSimple-button-title">
+                {translate('ETHSIMPLE_ACTION', {
+                  $domainPriceEth: subdomainPriceETH
+                })}
+              </label>
+            </button>
+            <ETHSimpleStatus
+              isValidSubdomain={isValidSubdomain}
+              subdomain={subdomain}
+              insufficientEtherBalance={this.insufficientEtherBalance()}
+              purchaseMode={purchaseMode}
+              pollInitiated={pollInitiated}
+              domainRequestIsComplete={isComplete}
+              domainIsAvailable={isAvailable}
+              domainIsOwnedByCurrentAddress={isOwnedBySelf}
+            />
+            <ConfirmationModal
+              isOpen={!signaturePending && signedTx && showModal}
+              onClose={this.cancelModal}
+            />
+          </div>
+        ) : null}
+        <div className="row">
+          <div className="col-xs-12">
+            <a className="ETHSimple-logo" href={esURL} target="_blank" rel="noopener noreferrer" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -208,214 +240,29 @@ class ETHSimpleClass extends React.Component<Props, State> {
     this.setState({ address });
   };
 
-  private generateDescription = (): React.ReactElement<any> => {
-    const { address, subdomain } = this.state;
-    const { supportedNetworks, esFullDomain, placeholderDomain, defaultDescAddr } = constants;
-    const domainName =
-      (subdomain.length > 0 ? subdomain : placeholderDomain) +
-      (subdomain.length > 25 ? ' ' : '') +
-      esFullDomain;
-    const displayAddr = address.length > 0 ? address : defaultDescAddr;
-    const charCount = domainName.length;
-    const cutoff =
-      charCount < 19 ? 30 : charCount < 23 ? 20 : charCount < 27 ? 25 : charCount < 32 ? 20 : 17;
-    const addr = displayAddr.substr(0, cutoff) + (cutoff < displayAddr.length ? '...' : '');
-    const supportedNetwork = (supportedNetworks as string[]).includes(this.props.network.id);
-    const descriptionText = supportedNetwork ? 'ETHSIMPLE_DESC' : 'ETHSIMPLE_UNSUPPORTED_NETWORK';
-    const textVariables = supportedNetwork
-      ? { $domain: domainName, $addr: addr }
-      : { $network: this.props.network.id };
-    return translate(descriptionText, textVariables as any);
-  };
-
-  private generateSubdomainInputField = (): React.ReactElement<any> => {
-    return (
-      <div className="input-group-wrapper">
-        <label className="input-group input-group-inline">
-          <Input
-            className="ETHSimple-name ETHSimple-name-input border-rad-right-0"
-            value={this.state.enteredSubdomain}
-            isValid={true}
-            type="text"
-            placeholder={constants.placeholderDomain}
-            spellCheck={false}
-            onChange={this.onChange}
-          />
-          <span className="ETHSimple-name input-group-addon">{constants.esFullDomain}</span>
-        </label>
-      </div>
-    );
-  };
-
-  private generatePurchaseButton = (): React.ReactElement<any> => {
+  private purchaseDisabled = (): boolean => {
     const { purchaseMode, enteredSubdomain, subdomain, isComplete, isAvailable } = this.state;
-    const { gasEstimation } = this.props;
     const isValidSubdomain = enteredSubdomain === subdomain && subdomain.length > 0;
     const insufficientBalance = this.insufficientEtherBalance();
-    const gasEstimateRequested = gasEstimation === transactionNetworkTypes.RequestStatus.REQUESTED;
-    const purchaseDisabled =
+    const gasEstimateRequested =
+      this.props.gasEstimation === transactionNetworkTypes.RequestStatus.REQUESTED;
+    return (
       !isValidSubdomain ||
       !isComplete ||
       !isAvailable ||
       insufficientBalance ||
       purchaseMode ||
-      gasEstimateRequested;
-    const buttonTitle = translate('ETHSIMPLE_ACTION', {
-      $domainPriceEth: constants.subdomainPriceETH
-    });
-    return (
-      <button
-        className="ETHSimple-button btn btn-primary btn-block"
-        disabled={purchaseDisabled}
-        onClick={this.purchaseSubdomain}
-      >
-        <label className="ETHSimple-button-title">{buttonTitle}</label>
-      </button>
+      gasEstimateRequested
     );
   };
 
-  private generateStatusLabel = (): React.ReactElement<any> => {
-    const {
+  private subdomainChanged = (enteredSubdomain: string, subdomain: string) => {
+    this.setState({
       enteredSubdomain,
       subdomain,
-      purchaseMode,
-      pollInitiated,
-      isComplete,
-      isAvailable,
-      isOwnedBySelf
-    } = this.state;
-    const isValidSubdomain = enteredSubdomain === subdomain;
-    const subdomainEntered = subdomain.length > 0;
-    const insufficientBalance = this.insufficientEtherBalance();
-    const spinnerIcon = <Spinner />;
-    const checkIcon = <i className="fa fa-check" />;
-    const xIcon = <i className="fa fa-remove" />;
-    const refreshIcon = <i className="fa fa-refresh" />;
-    const divBaseClass = 'ETHSimple-status help-block is-';
-    const validClass = divBaseClass + 'valid';
-    const warningClass = divBaseClass + 'semivalid';
-    const invalidClass = divBaseClass + 'invalid';
-    const refreshButton = (
-      <button className="ETHSimple-section-refresh" onClick={this.refreshDomainResolution}>
-        {refreshIcon}
-      </button>
-    );
-    const domainName = {
-      $domain: subdomain + (subdomain.length > 25 ? ' ' : '') + constants.esFullDomain
-    };
-    let className = '';
-    let icon = null;
-    let label = null;
-    let button = null;
-
-    if (purchaseMode) {
-      className = warningClass;
-      icon = spinnerIcon;
-      label = pollInitiated
-        ? translate('ETHSIMPLE_STATUS_WAIT_FOR_MINE')
-        : translate('ETHSIMPLE_STATUS_WAIT_FOR_CONFIRM');
-    } else if (!isValidSubdomain) {
-      className = invalidClass;
-      label = translate('ENS_SUBDOMAIN_INVALID_INPUT');
-    } else if (isComplete) {
-      if (isAvailable) {
-        button = refreshButton;
-        if (insufficientBalance) {
-          className = warningClass;
-          label = translate('ETHSIMPLE_STATUS_INSUFFICIENT_FUNDS', domainName);
-        } else {
-          className = validClass;
-          icon = checkIcon;
-          label = translate('ETHSIMPLE_STATUS_AVAILABLE', domainName);
-        }
-      } else {
-        if (isOwnedBySelf) {
-          className = validClass;
-          label = translate('ETHSIMPLE_STATUS_OWNED_BY_USER', domainName);
-        } else {
-          className = invalidClass;
-          icon = xIcon;
-          label = translate('ETHSIMPLE_STATUS_UNAVAILABLE', domainName);
-        }
-      }
-    } else if (subdomainEntered) {
-      className = warningClass;
-      icon = spinnerIcon;
-      label = translate('ETHSIMPLE_STATUS_RESOLVING_DOMAIN', domainName);
-    }
-    return (
-      <div className={className}>
-        {icon}
-        {label}
-        {button}
-      </div>
-    );
-  };
-
-  private generateModal = (): React.ReactElement<any> => {
-    const { signaturePending, signedTx } = this.props;
-    return (
-      <ConfirmationModal
-        isOpen={!signaturePending && signedTx && this.state.showModal}
-        onClose={this.cancelModal}
-      />
-    );
-  };
-
-  private generateESLogoButton = (): React.ReactElement<any> => {
-    return (
-      <div className="row">
-        <div className="col-xs-12">
-          <a
-            className="ETHSimple-logo"
-            href={constants.esURL}
-            target="_blank"
-            rel="noopener noreferrer"
-          />
-        </div>
-      </div>
-    );
-  };
-
-  /**
-   *
-   * @desc Called on changes to the subdomain input field. Checks the validity of
-   * the entered subdomain, sets purchaseMode to false, and records the time of
-   * the keystroke. On the setState callback it calls the keystroke handler
-   */
-  private onChange = (event: React.FormEvent<HTMLInputElement>) => {
-    const enteredSubdomain = event.currentTarget.value.trim().toLowerCase();
-    const subdomain = isValidENSName(enteredSubdomain + constants.esDomain)
-      ? normalise(enteredSubdomain)
-      : '';
-    this.setState(
-      {
-        enteredSubdomain,
-        subdomain,
-        purchaseMode: false,
-        lastKeystrokeTime: Date.now(),
-        isComplete: false
-      },
-      () => {
-        subdomain.length > 0
-          ? setTimeout(this.processKeystroke, this.state.resolutionDelay)
-          : this.props.resetTx();
-      }
-    );
-  };
-
-  /**
-   *
-   * @desc Called on a delay after a keystroke is recorded in onChange(). This
-   * function checks if a more recent keystroke has occurred before requesting an
-   * ENS lookup in order to reduce superfluous calls
-   */
-  private processKeystroke = () => {
-    const { resolveDomain, network } = this.props;
-    const { lastKeystrokeTime, subdomain, resolutionDelay } = this.state;
-    if (lastKeystrokeTime < Date.now() - resolutionDelay && subdomain.length > 0) {
-      resolveDomain(subdomain + constants.esDomain, network.isTestnet);
-    }
+      purchaseMode: false,
+      isComplete: false
+    });
   };
 
   /**
@@ -797,7 +644,6 @@ const mapDispatchToProps: DispatchProps = {
   inputGasLimit: transactionFieldsActions.inputGasLimit,
   inputGasPrice: transactionFieldsActions.inputGasPrice,
   getNonce: transactionNetworkActions.getNonceRequested,
-  resetTx: transactionFieldsActions.resetTransactionRequested,
   signTx: transactionSignActions.signTransactionRequested,
   fetchTxData: transactionsActions.fetchTransactionData,
   refreshBalance: walletActions.refreshAccountBalance,

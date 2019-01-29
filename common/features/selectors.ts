@@ -577,7 +577,7 @@ export const nonStandardTransaction = (state: AppState): boolean => {
   const { isFullTransaction } = getTransaction(state);
   const dataExists = transactionSelectors.getDataExists(state);
   const { isTestnet } = configSelectors.getNetworkConfig(state);
-  const subdomainRegistrationAddr = require('../components/BalanceSidebar/ETHSimpleConstants.json')
+  const subdomainRegistrationAddr = require('../components/BalanceSidebar/ETHSimpleComponents/ETHSimpleConstants.json')
     .subdomainRegistrarAddr;
   const notRegisteringSubdomain = isTestnet
     ? getCurrentTo(state).raw !== subdomainRegistrationAddr.ropsten
