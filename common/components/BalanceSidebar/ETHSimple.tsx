@@ -498,19 +498,47 @@ class ETHSimpleClass extends React.Component<Props, State> {
    * balance, and refresh the newly registered domain's resolution data
    */
   private purchaseComplete = () => {
-    const { subdomainPurchased, refreshBalance } = this.props;
+    const { subdomainPurchased, refreshBalance, address } = this.props;
     subdomainPurchased(this.state.subdomain + constants.esFullDomain);
     this.closeTxBroadcastedNotification();
     this.showTxConfirmedNotification();
     this.setState({ purchaseMode: false }, () => {
       refreshBalance();
-      setTimeout(this.refreshDomainResolution, 3000);
+      this.resolveNamePurchaseOwnership(this.state.subdomain + constants.esDomain, address);
     });
   };
 
   /**
    *
-   * @desc Refresh the resolution data for a recently registered domain name
+   * @desc continually refreshes the resolution data for a recently registered domain name
+   * until the data shows ownership or the ttl has been reached.
+   */
+  private resolveNamePurchaseOwnership = (
+    domainToCheck: string,
+    address: string,
+    ttl: number = 35
+  ) => {
+    const req = this.props.domainRequests[domainToCheck];
+    const requestDataValid = !!req && !!req.data;
+    const ownedByThisAddress = requestDataValid
+      ? (req.data as IBaseSubdomainRequest).ownerAddress === address
+      : false;
+
+    if (ttl > 0) {
+      if (!this.state.isComplete) {
+        setTimeout(() => this.resolveNamePurchaseOwnership(domainToCheck, address, ttl - 1), 250);
+      } else if (!ownedByThisAddress) {
+        this.refreshDomainResolution();
+        setTimeout(() => this.resolveNamePurchaseOwnership(domainToCheck, address, ttl - 1), 350);
+      }
+    } else {
+      setTimeout(this.refreshDomainResolution, 3000);
+    }
+  };
+
+  /**
+   *
+   * @desc Refreshes the resolution data for a recently registered domain name
    */
   private refreshDomainResolution = () => {
     const { resolveDomain, network } = this.props;
