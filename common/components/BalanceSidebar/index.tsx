@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 
 import { AppState } from 'features/reducers';
 import { walletSelectors } from 'features/wallet';
+import { configSelectors } from 'features/config';
 import EquivalentValues from './EquivalentValues';
 import AccountInfo from './AccountInfo';
 import ETHSimple from './ETHSimple';
@@ -21,6 +22,7 @@ interface State {
 
 interface StateProps {
   wallet: AppState['wallet']['inst'];
+  checksum: ReturnType<typeof configSelectors.getChecksumAddressFn>;
 }
 
 export class BalanceSidebar extends React.Component<StateProps, State> {
@@ -29,7 +31,7 @@ export class BalanceSidebar extends React.Component<StateProps, State> {
   };
 
   public render() {
-    const { wallet } = this.props;
+    const { wallet, checksum } = this.props;
 
     if (!wallet) {
       return null;
@@ -47,7 +49,12 @@ export class BalanceSidebar extends React.Component<StateProps, State> {
       },
       {
         name: 'ETHSimple',
-        content: <ETHSimple wallet={wallet} subdomainPurchased={this.setPurchasedSubdomainLabel} />
+        content: (
+          <ETHSimple
+            address={checksum(wallet.getAddressString())}
+            subdomainPurchased={this.setPurchasedSubdomainLabel}
+          />
+        )
       },
       {
         name: 'Promos',
@@ -81,7 +88,8 @@ export class BalanceSidebar extends React.Component<StateProps, State> {
 }
 
 const mapStateToProps = (state: AppState): StateProps => ({
-  wallet: walletSelectors.getWalletInst(state)
+  wallet: walletSelectors.getWalletInst(state),
+  checksum: configSelectors.getChecksumAddressFn(state)
 });
 
 export default connect(mapStateToProps)(BalanceSidebar);

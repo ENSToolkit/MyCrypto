@@ -25,7 +25,6 @@ import {
 import { transactionNetworkTypes } from 'features/transaction/network';
 import { transactionsActions, transactionsSelectors } from 'features/transactions';
 import { walletSelectors, walletActions } from 'features/wallet';
-import { IWallet } from 'libs/wallet';
 import { getNameHash, NameState, IBaseSubdomainRequest } from 'libs/ens';
 import Contract from 'libs/contracts';
 import { Address, Wei, handleValues, gasPriceToBase, fromWei } from 'libs/units';
@@ -46,7 +45,6 @@ interface StateProps {
   gasEstimation: AppState['transaction']['network']['gasEstimationStatus'];
   notifications: AppState['notifications'];
   network: ReturnType<typeof configSelectors.getNetworkConfig>;
-  checksum: ReturnType<typeof configSelectors.getChecksumAddressFn>;
   txDatas: AppState['transactions']['txData'];
   txBroadcasted: boolean | null;
   signaturePending: AppState['transaction']['sign']['pending'];
@@ -77,7 +75,7 @@ interface DispatchProps {
 }
 
 interface OwnProps {
-  wallet: IWallet;
+  address: string;
   subdomainPurchased(label: string): void;
 }
 
@@ -87,7 +85,6 @@ interface State {
   esRegistrar: Contract;
   subdomain: string;
   enteredSubdomain: string;
-  address: string;
   purchaseMode: boolean;
   pollInitiated: boolean;
   pollTimeout: boolean;
@@ -104,7 +101,6 @@ class ETHSimpleClass extends React.Component<Props, State> {
     esRegistrar: new Contract(constants.subdomainRegistrarABI),
     subdomain: '',
     enteredSubdomain: '',
-    address: '',
     purchaseMode: false,
     pollInitiated: false,
     pollTimeout: false,
@@ -116,16 +112,16 @@ class ETHSimpleClass extends React.Component<Props, State> {
     txFailed: false
   };
 
-  public componentDidMount() {
-    this.setAddress();
-  }
-
   public componentDidUpdate(prevProps: Props) {
-    const { txDatas, currentTxStatus, wallet, network, domainRequests, resolveDomain } = this.props;
-    const { pollTimeout, purchaseMode, subdomain, address } = this.state;
-    if (wallet !== prevProps.wallet || network !== prevProps.network) {
-      this.setAddress();
-    }
+    const {
+      txDatas,
+      currentTxStatus,
+      network,
+      domainRequests,
+      resolveDomain,
+      address
+    } = this.props;
+    const { pollTimeout, purchaseMode, subdomain } = this.state;
     if (domainRequests !== prevProps.domainRequests) {
       const req = domainRequests[subdomain + constants.esDomain];
       const isComplete = !!req && req.state === ensDomainRequestsTypes.RequestStates.success;
@@ -168,7 +164,6 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   public render() {
     const {
-      address,
       subdomain,
       enteredSubdomain,
       purchaseMode,
@@ -178,7 +173,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
       isOwnedBySelf,
       showModal
     } = this.state;
-    const { network, signaturePending, signedTx } = this.props;
+    const { address, network, signaturePending, signedTx } = this.props;
     const { supportedNetworks, subdomainPriceETH, esURL } = constants;
     const isValidSubdomain = enteredSubdomain === subdomain;
     return (
@@ -233,12 +228,6 @@ class ETHSimpleClass extends React.Component<Props, State> {
       this.closeModal(false);
     }
   }
-
-  private setAddress = () => {
-    const { checksum, wallet } = this.props;
-    const address = checksum(wallet.getAddressString());
-    this.setState({ address });
-  };
 
   private purchaseDisabled = (): boolean => {
     const { purchaseMode, enteredSubdomain, subdomain, isComplete, isAvailable } = this.state;
@@ -307,8 +296,8 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Sets the fields of the tx singleton with the desired parameters of
-   * a new subdomain registration and requests the nonce if needed
+   * @desc Set the fields of the tx singleton with the desired parameters of
+   * a new subdomain registration and request the nonce if needed
    */
   private setTxFields = () => {
     const {
@@ -338,7 +327,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Returns the address of the ETHSimple subdomain registrar
+   * @desc Return the address of the ETHSimple subdomain registrar
    * contract, which is dependent on the configured network
    * @returns {string}
    */
@@ -351,7 +340,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Returns the value parameter for a subdomain registration tx denominated in Wei
+   * @desc Return the value parameter for a subdomain registration tx denominated in Wei
    * @returns {Wei}
    */
   private getTxValue = (): Wei => {
@@ -360,19 +349,19 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Returns the encoded data parameter for a subdomain registration tx
+   * @desc Return the encoded data parameter for a subdomain registration tx
    * @returns {string}
    */
   private getTxData = (): string => {
-    const { address, subdomain, esRegistrar } = this.state;
+    const { subdomain, esRegistrar } = this.state;
     const { esFullDomainNamehash, esFullDomain, publicResolverAddr, emptyContentHash } = constants;
     const inputs = {
       _node: esFullDomainNamehash,
       _label: bufferToHex(sha3(subdomain)),
       _newNode: getNameHash(subdomain + esFullDomain),
       _resolver: publicResolverAddr,
-      _owner: address,
-      _resolvedAddress: address,
+      _owner: this.props.address,
+      _resolvedAddress: this.props.address,
       _contentHash: emptyContentHash
     } as any;
     return esRegistrar.purchaseSubdomain.encodeInput(
@@ -382,7 +371,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Returns the gas price parameter for a subdomain registration tx
+   * @desc Return the gas price parameter for a subdomain registration tx
    * @returns {string}
    */
   private getTxGasPrice = (): string => {
@@ -392,7 +381,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Returns the hex-encoded gas limit parameter for a subdomain registration tx
+   * @desc Return the hex-encoded gas limit parameter for a subdomain registration tx
    * @returns {string}
    */
   private getTxGasLimit = (): string => {
@@ -401,7 +390,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Returns true if the purchase button has been clicked, a signature is not
+   * @desc Return true if the purchase button has been clicked, a signature is not
    * pending, the tx has not been signed, and gas estimation has not been requested
    * @returns {boolean}
    */
@@ -413,7 +402,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Returns true if each of the tx parameters have been correctly set
+   * @desc Return true if each of the tx parameters have been correctly set
    * @returns {boolean}
    */
   private txFieldsValid = (): boolean => {
@@ -452,7 +441,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Returns true if the recent tx was successfully broadcasted
+   * @desc Return true if the recent tx was successfully broadcasted
    * and the tx confirmation poll has not been started
    * @returns {boolean}
    */
@@ -471,7 +460,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Returns true if the recent tx attempted to broadcast and the broadcast failed
+   * @desc Return true if the recent tx attempted to broadcast and the broadcast failed
    * @param {Props}
    * @returns {boolean}
    */
@@ -490,7 +479,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Returns true if the recent tx was successfully broadcasted
+   * @desc Return true if the recent tx was successfully broadcasted
    * and the tx receipt has been retrieved and shows a success status
    * @returns {boolean}
    */
@@ -511,7 +500,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
    *
    * @desc Pass the purchased subdomain name to the AccountAddress component, close the
    * tx broadcasted notification, show the tx confirmed notification, refresh the account's
-   * balance, and refreshes the newly registered domain's resolution data
+   * balance, and refresh the newly registered domain's resolution data
    */
   private purchaseComplete = () => {
     const { subdomainPurchased, refreshBalance } = this.props;
@@ -535,7 +524,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Find the tx broadcasted notification and closes it
+   * @desc Find the tx broadcasted notification and close it
    */
   private closeTxBroadcastedNotification = () => {
     const { notifications, closeNotification } = this.props;
@@ -577,7 +566,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
   /**
    *
    * @desc Close the tx confirmation modal, if closedByUser then
-   * enable the purchase button. Toggle auto gas estimation
+   * disable purchase mode (enabling the purchase button). Toggle auto gas estimation
    */
   private closeModal = (closedByUser: boolean) => {
     const { autoGasLimit, toggleAutoGasLimit } = this.props;
@@ -619,7 +608,6 @@ function mapStateToProps(state: AppState): StateProps {
     nonceStatus: transactionNetworkSelectors.getNetworkStatus(state).getNonceStatus,
     gasEstimation: transactionNetworkSelectors.getNetworkStatus(state).gasEstimationStatus,
     network: configSelectors.getNetworkConfig(state),
-    checksum: configSelectors.getChecksumAddressFn(state),
     gasEstimates: gasSelectors.getEstimates(state),
     gasPrice: transactionFieldsSelectors.getGasPrice(state),
     autoGasLimit: configMetaSelectors.getAutoGasLimitEnabled(state),
