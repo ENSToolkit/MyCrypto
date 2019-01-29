@@ -110,29 +110,10 @@ class ETHSimpleClass extends React.Component<Props, State> {
   };
 
   public componentDidUpdate(prevProps: Props) {
-    const {
-      txDatas,
-      currentTxStatus,
-      network,
-      domainRequests,
-      resolveDomain,
-      address
-    } = this.props;
-    const { pollTimeout, purchaseMode, subdomain } = this.state;
+    const { txDatas, currentTxStatus, domainRequests } = this.props;
+    const { pollTimeout, purchaseMode } = this.state;
     if (domainRequests !== prevProps.domainRequests) {
-      const req = domainRequests[subdomain + constants.esDomain];
-      const isComplete = !!req && req.state === ensDomainRequestsTypes.RequestStates.success;
-      const requestFailed = !!req && req.state === ensDomainRequestsTypes.RequestStates.failed;
-      const isAvailable = isComplete
-        ? (req.data as IBaseSubdomainRequest).mode === NameState.Open
-        : false;
-      const isOwnedBySelf = isComplete
-        ? (req.data as IBaseSubdomainRequest).ownerAddress === address
-        : false;
-      this.setState({ isComplete, isAvailable, isOwnedBySelf });
-      if (requestFailed) {
-        resolveDomain(subdomain + constants.esDomain, network.chainId !== 1);
-      }
+      this.handleDomainResolutionUpdate();
     }
     if (purchaseMode) {
       if (this.signTxIntended() && this.txFieldsValid()) {
@@ -249,6 +230,23 @@ class ETHSimpleClass extends React.Component<Props, State> {
       purchaseMode: false,
       isComplete: false
     });
+  };
+
+  private handleDomainResolutionUpdate = () => {
+    const { network, domainRequests, resolveDomain, address } = this.props;
+    const req = domainRequests[this.state.subdomain + constants.esDomain];
+    const isComplete = !!req && req.state === ensDomainRequestsTypes.RequestStates.success;
+    const requestFailed = !!req && req.state === ensDomainRequestsTypes.RequestStates.failed;
+    const isAvailable = isComplete
+      ? (req.data as IBaseSubdomainRequest).mode === NameState.Open
+      : false;
+    const isOwnedBySelf = isComplete
+      ? (req.data as IBaseSubdomainRequest).ownerAddress === address
+      : false;
+    this.setState({ isComplete, isAvailable, isOwnedBySelf });
+    if (requestFailed) {
+      resolveDomain(this.state.subdomain + constants.esDomain, network.chainId !== 1);
+    }
   };
 
   /**
