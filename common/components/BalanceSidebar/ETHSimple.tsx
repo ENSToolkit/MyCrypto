@@ -8,21 +8,20 @@ import { TransactionReceipt } from 'types/transactions';
 import { AppState } from 'features/reducers';
 import { ensActions, ensDomainRequestsTypes } from 'features/ens';
 import { gasSelectors } from 'features/gas';
-import { configSelectors, configMetaActions } from 'features/config';
-import { configMetaSelectors } from 'features/config/meta';
+import { configSelectors, configMetaActions, configMetaSelectors } from 'features/config';
 import { notificationsActions } from 'features/notifications';
 import * as derivedSelectors from 'features/selectors';
 import {
-  transactionFieldsSelectors,
+  transactionBroadcastTypes,
   transactionFieldsActions,
+  transactionFieldsSelectors,
   transactionNetworkActions,
   transactionNetworkSelectors,
+  transactionNetworkTypes,
   transactionSelectors,
-  transactionSignSelectors,
-  transactionBroadcastTypes,
-  transactionSignActions
+  transactionSignActions,
+  transactionSignSelectors
 } from 'features/transaction';
-import { transactionNetworkTypes } from 'features/transaction/network';
 import { transactionsActions, transactionsSelectors } from 'features/transactions';
 import { walletSelectors, walletActions } from 'features/wallet';
 import { getNameHash, NameState, IBaseSubdomainRequest } from 'libs/ens';
@@ -93,7 +92,6 @@ interface State {
   isComplete: boolean;
   isAvailable: boolean;
   isOwnedBySelf: boolean;
-  txFailed: boolean;
 }
 
 class ETHSimpleClass extends React.Component<Props, State> {
@@ -108,8 +106,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
     broadcastedHash: '',
     isComplete: false,
     isAvailable: false,
-    isOwnedBySelf: false,
-    txFailed: false
+    isOwnedBySelf: false
   };
 
   public componentDidUpdate(prevProps: Props) {
@@ -133,8 +130,8 @@ class ETHSimpleClass extends React.Component<Props, State> {
         ? (req.data as IBaseSubdomainRequest).ownerAddress === address
         : false;
       this.setState({ isComplete, isAvailable, isOwnedBySelf });
-      if (requestFailed && !!network.isTestnet) {
-        resolveDomain(subdomain + constants.esDomain, network.isTestnet);
+      if (requestFailed) {
+        resolveDomain(subdomain + constants.esDomain, network.chainId !== 1);
       }
     }
     if (purchaseMode) {
@@ -149,7 +146,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
           });
           this.pollForTxReceipt();
         } else if (this.txBroadcastFailed(prevProps)) {
-          this.setState({ purchaseMode: false, txFailed: true });
+          this.setState({ purchaseMode: false });
         }
       }
       if (txDatas !== prevProps.txDatas) {
@@ -333,9 +330,9 @@ class ETHSimpleClass extends React.Component<Props, State> {
    */
   private getTxAddress = (): string => {
     const { subdomainRegistrarAddr } = constants;
-    return this.props.network.isTestnet
-      ? subdomainRegistrarAddr.ropsten
-      : subdomainRegistrarAddr.mainnet;
+    return this.props.network.chainId === 1
+      ? subdomainRegistrarAddr.mainnet
+      : subdomainRegistrarAddr.ropsten;
   };
 
   /**
@@ -519,7 +516,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
    */
   private refreshDomainResolution = () => {
     const { resolveDomain, network } = this.props;
-    resolveDomain(this.state.subdomain + constants.esDomain, network.isTestnet, true);
+    resolveDomain(this.state.subdomain + constants.esDomain, network.chainId !== 1, true);
   };
 
   /**
@@ -572,7 +569,6 @@ class ETHSimpleClass extends React.Component<Props, State> {
     const { autoGasLimit, toggleAutoGasLimit } = this.props;
     this.setState(
       {
-        txFailed: false,
         showModal: false,
         purchaseMode: !closedByUser
       },
