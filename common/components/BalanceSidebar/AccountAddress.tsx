@@ -164,7 +164,12 @@ class AccountAddress extends React.Component<Props, State> {
       reverseResolve(address);
     }
     if (purchasedSubdomainLabel !== prevProps.purchasedSubdomainLabel) {
-      if (!publicNameExists && !!purchasedSubdomainLabel && purchasedSubdomainLabel.length > 0) {
+      if (
+        !publicNameExists &&
+        !!purchasedSubdomainLabel &&
+        purchasedSubdomainLabel.length > 0 &&
+        networkConfig.chainId === 1
+      ) {
         this.setState({ temporaryPublicName: purchasedSubdomainLabel, showPurchase: true });
       }
     }
@@ -206,14 +211,14 @@ class AccountAddress extends React.Component<Props, State> {
   }
 
   public render() {
-    const { address, addressLabel } = this.props;
+    const { address, addressLabel, networkConfig } = this.props;
     const { copied, publicNameExists, showPurchase, editingPublicName } = this.state;
     const content =
       publicNameExists || showPurchase || editingPublicName
         ? this.generatePublicNameContent()
         : this.generateLabelContent();
     const labelButton = this.generateLabelButton();
-    const publicNameButton = this.generatePublicNameButton();
+    const publicNameButton = networkConfig.chainId === 1 ? this.generatePublicNameButton() : null;
     const modal = this.generateModal();
     const addressClassName = `AccountInfo-address-addr ${
       addressLabel || publicNameExists || showPurchase ? 'AccountInfo-address-addr--small' : ''
