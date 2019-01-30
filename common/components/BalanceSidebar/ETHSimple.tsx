@@ -14,7 +14,6 @@ import * as derivedSelectors from 'features/selectors';
 import {
   transactionBroadcastTypes,
   transactionFieldsActions,
-  transactionFieldsSelectors,
   transactionNetworkActions,
   transactionNetworkSelectors,
   transactionNetworkTypes,
@@ -53,7 +52,6 @@ interface StateProps {
   transaction: EthTx;
   etherBalance: AppState['wallet']['balance']['wei'];
   gasEstimates: AppState['gas']['estimates'];
-  gasPrice: AppState['transaction']['fields']['gasPrice'];
   autoGasLimit: AppState['config']['meta']['autoGasLimit'];
 }
 
@@ -269,10 +267,10 @@ class ETHSimpleClass extends React.Component<Props, State> {
    * @returns {boolean}
    */
   private insufficientEtherBalance = (): boolean => {
-    const { subdomainPriceWei, purchaseSubdomainGasLimit } = constants;
-    const { gasPrice, etherBalance } = this.props;
-    const txCost = Wei(subdomainPriceWei).add(
-      gasPrice.value.mul(handleValues(purchaseSubdomainGasLimit))
+    const { purchaseSubdomainGasLimit } = constants;
+    const { gasEstimates, etherBalance } = this.props;
+    const txCost = gasPriceToBase(!!gasEstimates ? gasEstimates.fast : 20).mul(
+      handleValues(purchaseSubdomainGasLimit)
     );
     return !!etherBalance && txCost.gt(etherBalance);
   };
@@ -643,7 +641,6 @@ function mapStateToProps(state: AppState): StateProps {
     gasEstimation: transactionNetworkSelectors.getNetworkStatus(state).gasEstimationStatus,
     network: configSelectors.getNetworkConfig(state),
     gasEstimates: gasSelectors.getEstimates(state),
-    gasPrice: transactionFieldsSelectors.getGasPrice(state),
     autoGasLimit: configMetaSelectors.getAutoGasLimitEnabled(state),
     notifications: state.notifications,
     ...derivedSelectors.getTransaction(state),
