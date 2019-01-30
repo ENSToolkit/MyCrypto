@@ -553,8 +553,8 @@ class ETHSimpleClass extends React.Component<Props, State> {
    * @desc Refreshes the resolution data for a recently registered domain name
    */
   private refreshDomainResolution = () => {
-    const { resolveDomain, network } = this.props;
-    resolveDomain(this.state.subdomain + constants.esDomain, network.chainId !== 1, true);
+    const { resolveDomain } = this.props;
+    resolveDomain(this.state.subdomain + constants.esDomain, true);
   };
 
   /**

@@ -3,7 +3,6 @@ import { connect } from 'react-redux';
 
 import { AppState } from 'features/reducers';
 import { ensActions } from 'features/ens';
-import { configSelectors } from 'features/config';
 import { transactionFieldsSelectors } from 'features/transaction';
 import { walletSelectors } from 'features/wallet';
 import { Spinner } from 'components/ui';
@@ -13,7 +12,6 @@ const constants = require('./ETHSimpleConstants.json');
 interface StateProps {
   etherBalance: AppState['wallet']['balance']['wei'];
   gasPrice: AppState['transaction']['fields']['gasPrice'];
-  network: ReturnType<typeof configSelectors.getNetworkConfig>;
 }
 
 interface DispatchProps {
@@ -116,16 +114,15 @@ class ETHSimpleStatusClass extends React.Component<Props> {
    * @desc Refresh the resolution data for a recently registered domain name
    */
   private refreshDomainResolution = () => {
-    const { resolveDomain, network, subdomain } = this.props;
-    resolveDomain(subdomain + constants.esDomain, network.isTestnet, true);
+    const { resolveDomain, subdomain } = this.props;
+    resolveDomain(subdomain + constants.esDomain, true);
   };
 }
 
 function mapStateToProps(state: AppState): StateProps {
   return {
     etherBalance: walletSelectors.getEtherBalance(state),
-    gasPrice: transactionFieldsSelectors.getGasPrice(state),
-    network: configSelectors.getNetworkConfig(state)
+    gasPrice: transactionFieldsSelectors.getGasPrice(state)
   };
 }
 
