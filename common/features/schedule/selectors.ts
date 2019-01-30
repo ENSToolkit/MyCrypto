@@ -1,10 +1,16 @@
 import BN from 'bn.js';
 
 import { Wei } from 'libs/units';
-import { gasPriceValidator, gasLimitValidator, timeBountyValidator } from 'libs/validators';
+import {
+  gasPriceValidator,
+  gasLimitValidator,
+  timeBountyValidator,
+  isValidNumberOrDecimal
+} from 'libs/validators';
 import { EAC_SCHEDULING_CONFIG } from 'libs/scheduling';
 import { AppState } from 'features/reducers';
 import * as helpers from './helpers';
+import { TxObj } from 'ethereumjs-tx';
 
 //#region Fields
 export const getScheduleState = (state: AppState) => state.schedule;
@@ -38,6 +44,21 @@ export const isSchedulingEnabled = (state: AppState): boolean => {
 
   return schedulingToggle && schedulingToggle.value;
 };
+
+export const getScheduledTransactionHash = (state: AppState): string =>
+  getScheduleState(state).scheduledTransactionHash.value;
+
+export const getScheduledTransactionAddress = (state: AppState): string =>
+  getScheduleState(state).scheduledTransactionAddress.value;
+
+export const getScheduledTokenTransferSymbol = (state: AppState): string =>
+  getScheduleState(state).scheduledTokenTransferSymbol.value;
+
+export const getScheduledTokensApproveTransaction = (state: AppState): TxObj | undefined =>
+  getScheduleState(state).scheduledTokensApproveTransaction;
+
+export const getSendingTokenApproveTransaction = (state: AppState): boolean =>
+  getScheduleState(state).sendingTokenApproveTransaction;
 //#endregion Fields
 
 //#region Current
@@ -54,7 +75,7 @@ export const isValidCurrentScheduleTimestamp = (state: AppState) => {
 
   return (
     currentScheduleDatetime >=
-    helpers.minFromNow(EAC_SCHEDULING_CONFIG.ALLOW_SCHEDULING_MIN_AFTER_NOW)
+    helpers.minsFromNow(EAC_SCHEDULING_CONFIG.ALLOW_SCHEDULING_MIN_AFTER_NOW)
   );
 };
 
@@ -82,15 +103,6 @@ export const getCurrentScheduleType = (state: AppState): ICurrentScheduleType =>
   getScheduleType(state);
 //#endregion Schedule Type
 
-//#region Scheduling Toggle
-export interface ICurrentSchedulingToggle {
-  value: boolean;
-}
-
-export const getCurrentSchedulingToggle = (state: AppState): ICurrentSchedulingToggle =>
-  getSchedulingToggle(state);
-//#endregion Scheduling Toggle
-
 //#region Time Bounty
 export interface ICurrentTimeBounty {
   raw: string;
@@ -117,6 +129,8 @@ export const isValidCurrentWindowSize = (state: AppState) => {
 
   return (
     currentWindowSize &&
+    currentWindowSize.raw &&
+    isValidNumberOrDecimal(currentWindowSize.raw) &&
     currentWindowSize.value &&
     currentWindowSize.value.gt(new BN(0)) &&
     currentWindowSize.value.bitLength() <= 256

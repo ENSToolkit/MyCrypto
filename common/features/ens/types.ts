@@ -24,7 +24,7 @@ export enum ENSActions {
 
 export interface ResolveDomainRequested {
   type: ENSActions.RESOLVE_DOMAIN_REQUESTED;
-  payload: { domain: string; testnet?: boolean; refresh?: boolean };
+  payload: { domain: string; refresh?: boolean };
 }
 
 export interface ResolveDomainSucceeded {

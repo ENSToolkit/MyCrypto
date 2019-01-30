@@ -5,6 +5,7 @@ type StaticNetworkIds =
   | 'Ropsten'
   | 'Kovan'
   | 'Rinkeby'
+  | 'Gangnam'
   | 'ETC'
   | 'UBQ'
   | 'EXP'
@@ -21,7 +22,13 @@ type StaticNetworkIds =
   | 'GO_TESTNET'
   | 'EOSC'
   | 'ESN'
-  | 'AQUA';
+  | 'AQUA'
+  | 'AKA'
+  | 'PIRL'
+  | 'ATH'
+  | 'ETHO'
+  | 'MIX'
+  | 'REOSC';
 
 export interface BlockExplorerConfig {
   name: string;
@@ -76,6 +83,7 @@ interface StaticNetworkConfig {
   gasPriceSettings: GasPriceSetting;
   shouldEstimateGasPrice?: boolean;
   unsupportedTabs?: TAB[];
+  hideEquivalentValues?: boolean;
 }
 
 interface CustomNetworkConfig {
@@ -87,6 +95,7 @@ interface CustomNetworkConfig {
   chainId: number;
   dPathFormats: DPathFormats | null;
   unsupportedTabs?: TAB[];
+  hideEquivalentValues?: boolean;
 }
 
 type NetworkConfig = CustomNetworkConfig | StaticNetworkConfig;

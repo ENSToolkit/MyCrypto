@@ -4,11 +4,10 @@ import * as types from './types';
 export type TResolveDomainRequested = typeof resolveDomainRequested;
 export const resolveDomainRequested = (
   domain: string,
-  testnet?: boolean,
   refresh?: boolean
 ): types.ResolveDomainRequested => ({
   type: types.ENSActions.RESOLVE_DOMAIN_REQUESTED,
-  payload: { domain, testnet, refresh }
+  payload: { domain, refresh }
 });
 
 export const resolveDomainCached = (

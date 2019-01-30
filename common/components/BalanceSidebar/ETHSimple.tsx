@@ -27,6 +27,7 @@ import { walletSelectors, walletActions } from 'features/wallet';
 import { getNameHash, NameState, IBaseSubdomainRequest } from 'libs/ens';
 import Contract from 'libs/contracts';
 import { Address, Wei, handleValues, gasPriceToBase, fromWei } from 'libs/units';
+import { isValidENSName } from 'libs/validators';
 import { getTransactionFields } from 'libs/transaction/utils/ether';
 import { ConfirmationModal } from 'components/ConfirmationModal';
 import { translate, translateRaw } from 'translations';
@@ -279,7 +280,7 @@ class ETHSimpleClass extends React.Component<Props, State> {
 
   /**
    *
-   * @desc Handles the click event from the purchase button
+   * @desc Handle the click event from the purchase button
    * @param {React.FormEvent<HTMLElement>} onClick or onSubmit event
    */
   private purchaseSubdomain = (ev: React.FormEvent<HTMLElement>) => {
