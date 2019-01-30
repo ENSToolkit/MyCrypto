@@ -16,9 +16,9 @@ interface OwnProps {
   editingPublicName: boolean;
   isComplete: boolean;
   purchasedSubdomainLabel: string | null;
-  setName: (name: string) => void;
-  setPublicNameRef: (node: HTMLInputElement) => HTMLInputElement;
-  stopEditingPublicName: () => void;
+  setName(name: string): void;
+  setPublicNameRef(node: HTMLInputElement): HTMLInputElement;
+  stopEditingPublicName(): void;
 }
 
 interface State {

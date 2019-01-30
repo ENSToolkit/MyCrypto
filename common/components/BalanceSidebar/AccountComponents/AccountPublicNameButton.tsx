@@ -21,8 +21,8 @@ interface OwnProps {
   setNameMode: boolean;
   showPurchase: boolean;
   setNameGasLimit: BN;
-  startEditingPublicName: () => void;
-  stopEditingPublicName: () => void;
+  startEditingPublicName(): void;
+  stopEditingPublicName(): void;
 }
 
 type Props = StateProps & OwnProps;

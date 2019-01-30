@@ -5,8 +5,8 @@ import { translate, translateRaw } from 'translations';
 interface OwnProps {
   buttonTitle: string;
   editingLabel: boolean;
-  startEditingLabel: () => void;
-  stopEditingLabel: () => void;
+  startEditingLabel(): void;
+  stopEditingLabel(): void;
 }
 
 type Props = OwnProps;

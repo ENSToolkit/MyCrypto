@@ -24,8 +24,8 @@ interface DispatchProps {
 interface OwnProps {
   editingLabel: boolean;
   address: string;
-  stopEditingLabel: () => void;
-  setLabelInputRef: (node: HTMLInputElement) => HTMLInputElement;
+  stopEditingLabel(): void;
+  setLabelInputRef(node: HTMLInputElement): HTMLInputElement;
 }
 
 interface State {
