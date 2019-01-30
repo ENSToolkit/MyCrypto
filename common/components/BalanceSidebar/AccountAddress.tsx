@@ -172,10 +172,9 @@ class AccountAddress extends React.Component<Props, State> {
       const req = addressRequests[address];
       const isComplete =
         !!req && !!req.data && req.state === ensAddressRequestsTypes.RequestStates.success;
-      const publicNameExists = !!req && !!req.data && req.data.name.length > 0;
       this.setState({
         isComplete,
-        publicNameExists
+        publicNameExists: !!req && !!req.data && req.data.name.length > 0
       });
       if (!!req && !!req.data && req.data.name.length > 0) {
         this.setState({ publicName: req.data.name });
