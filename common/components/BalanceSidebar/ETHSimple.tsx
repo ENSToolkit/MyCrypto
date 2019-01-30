@@ -92,6 +92,7 @@ interface State {
   isComplete: boolean;
   isAvailable: boolean;
   isOwnedBySelf: boolean;
+  testMode: boolean;
 }
 
 class ETHSimpleClass extends React.Component<Props, State> {
@@ -106,7 +107,8 @@ class ETHSimpleClass extends React.Component<Props, State> {
     broadcastedHash: '',
     isComplete: false,
     isAvailable: false,
-    isOwnedBySelf: false
+    isOwnedBySelf: false,
+    testMode: false
   };
 
   public componentDidUpdate(prevProps: Props) {
@@ -149,7 +151,8 @@ class ETHSimpleClass extends React.Component<Props, State> {
       isComplete,
       isAvailable,
       isOwnedBySelf,
-      showModal
+      showModal,
+      testMode
     } = this.state;
     const { address, network, signaturePending, signedTx } = this.props;
     const { supportedNetworks, subdomainPriceETH, esURL } = constants;
@@ -197,6 +200,11 @@ class ETHSimpleClass extends React.Component<Props, State> {
             <a className="ETHSimple-logo" href={esURL} target="_blank" rel="noopener noreferrer" />
           </div>
         </div>
+        {testMode ? (
+          <button className="ETHSimple-section-refresh" onClick={this.testPurchase}>
+            <i className="fa fa-remove" />
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -206,6 +214,10 @@ class ETHSimpleClass extends React.Component<Props, State> {
       this.closeModal(false);
     }
   }
+
+  private testPurchase = () => {
+    this.props.subdomainPurchased(this.state.subdomain + constants.esFullDomain);
+  };
 
   private purchaseDisabled = (): boolean => {
     const { purchaseMode, enteredSubdomain, subdomain, isComplete, isAvailable } = this.state;

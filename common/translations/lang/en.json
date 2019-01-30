@@ -112,6 +112,7 @@
     "SAVE_LABEL": "save label",
     "NEW_PUBLIC_NAME": "new public name",
     "ADD_PUBLIC_NAME": "add public name",
+    "SET_PUBLIC_NAME": "set public name",
     "EDIT_PUBLIC_NAME": "edit public name",
     "SAVE_PUBLIC_NAME": "save public name",
     "GEN_DESC": "If you want to generate multiple wallets, you can do so here ",

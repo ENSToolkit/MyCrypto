@@ -30,11 +30,12 @@ import { transactionsActions, transactionsSelectors } from 'features/transaction
 import { configSelectors, configMetaActions } from 'features/config';
 import { configMetaSelectors } from 'features/config/meta';
 import { ensActions, ensSelectors, ensAddressRequestsTypes } from 'features/ens';
-import { walletActions } from 'features/wallet';
+import { walletSelectors, walletActions } from 'features/wallet';
+import { IBaseAddressRequest } from 'libs/ens';
 import ENS from 'libs/ens/contracts';
 import Contract from 'libs/contracts';
 import networkConfigs from 'libs/ens/networkConfigs';
-import { Wei, fromWei, Address as Addr, gasPriceToBase } from 'libs/units';
+import { Wei, fromWei, Address as Addr, gasPriceToBase, handleValues } from 'libs/units';
 import { getTransactionFields } from 'libs/transaction/utils/ether';
 import { Address, Identicon, Input, Spinner } from 'components/ui';
 import { ConfirmationModal } from 'components/ConfirmationModal';
@@ -44,7 +45,6 @@ interface StateProps {
   addressRequests: AppState['ens']['addressRequests'];
   networkConfig: ReturnType<typeof configSelectors.getNetworkConfig>;
   addressLabel: string;
-  gasEstimates: AppState['gas']['estimates'];
   nonceStatus: AppState['transaction']['network']['getNonceStatus'];
   gasEstimation: AppState['transaction']['network']['gasEstimationStatus'];
   txDatas: AppState['transactions']['txData'];
@@ -56,10 +56,12 @@ interface StateProps {
   transaction: EthTx;
   autoGasLimit: AppState['config']['meta']['autoGasLimit'];
   notifications: AppState['notifications'];
+  etherBalance: AppState['wallet']['balance']['wei'];
+  gasEstimates: AppState['gas']['estimates'];
 }
 
 interface DispatchProps {
-  reverseResolveAddressRequested: ensActions.TReverseResolveAddressRequested;
+  reverseResolve: ensActions.TReverseResolveAddressRequested;
   changeAddressLabelEntry: addressBookActions.TChangeAddressLabelEntry;
   saveAddressLabelEntry: addressBookActions.TSaveAddressLabelEntry;
   removeAddressLabelEntry: addressBookActions.TRemoveAddressLabelEntry;
@@ -101,6 +103,8 @@ interface State {
   pollTimeout: boolean;
   broadcastedHash: string;
   isComplete: boolean;
+  showPurchase: boolean;
+  setNameGasLimit: BN;
 }
 
 class AccountAddress extends React.Component<Props, State> {
@@ -120,7 +124,9 @@ class AccountAddress extends React.Component<Props, State> {
     pollInitiated: false,
     pollTimeout: false,
     broadcastedHash: '',
-    isComplete: false
+    isComplete: false,
+    showPurchase: false,
+    setNameGasLimit: new BN('105875')
   };
 
   private goingToClearCopied: number | null = null;
@@ -147,14 +153,20 @@ class AccountAddress extends React.Component<Props, State> {
     const {
       address,
       networkConfig,
-      reverseResolveAddressRequested,
+      reverseResolve,
       addressRequests,
       currentTxStatus,
-      txDatas
-    } = this.props; // addressRequests,
-    const { setNameMode, pollTimeout } = this.state;
-    if (address !== prevProps.address && !networkConfig.isTestnet) {
-      reverseResolveAddressRequested(address, false);
+      txDatas,
+      purchasedSubdomainLabel
+    } = this.props;
+    const { setNameMode, pollTimeout, publicNameExists } = this.state;
+    if (address !== prevProps.address && networkConfig.chainId === 1) {
+      reverseResolve(address);
+    }
+    if (purchasedSubdomainLabel !== prevProps.purchasedSubdomainLabel) {
+      if (!publicNameExists && !!purchasedSubdomainLabel && purchasedSubdomainLabel.length > 0) {
+        this.setState({ temporaryPublicName: purchasedSubdomainLabel, showPurchase: true });
+      }
     }
     if (addressRequests !== prevProps.addressRequests) {
       const req = addressRequests[address];
@@ -196,14 +208,16 @@ class AccountAddress extends React.Component<Props, State> {
 
   public render() {
     const { address, addressLabel } = this.props;
-    const { copied, publicNameExists } = this.state;
-    const content = publicNameExists
-      ? this.generatePublicNameContent()
-      : this.generateLabelContent();
-    const button = publicNameExists ? this.generatePublicNameButton() : this.generateLabelButton();
+    const { copied, publicNameExists, showPurchase, editingPublicName } = this.state;
+    const content =
+      publicNameExists || showPurchase || editingPublicName
+        ? this.generatePublicNameContent()
+        : this.generateLabelContent();
+    const labelButton = this.generateLabelButton();
+    const publicNameButton = this.generatePublicNameButton();
     const modal = this.generateModal();
     const addressClassName = `AccountInfo-address-addr ${
-      addressLabel || publicNameExists ? 'AccountInfo-address-addr--small' : ''
+      addressLabel || publicNameExists || showPurchase ? 'AccountInfo-address-addr--small' : ''
     }`;
 
     return (
@@ -227,7 +241,8 @@ class AccountAddress extends React.Component<Props, State> {
                 <span>{translateRaw(copied ? 'COPIED' : 'COPY_ADDRESS')}</span>
               </div>
             </CopyToClipboard>
-            {button}
+            {labelButton}
+            {publicNameButton}
             {modal}
           </div>
         </div>
@@ -310,13 +325,17 @@ class AccountAddress extends React.Component<Props, State> {
   };
 
   private generatePublicNameContent = () => {
-    const { editingPublicName, publicName, publicNameError, isComplete } = this.state;
+    const { editingPublicName, publicName, publicNameError, isComplete, showPurchase } = this.state;
     return editingPublicName ? (
       <React.Fragment>
         <Input
           title={translateRaw('ADD_PUBLIC_NAME')}
           placeholder={translateRaw('NEW_PUBLIC_NAME')}
-          defaultValue={publicName}
+          defaultValue={
+            showPurchase && !!this.props.purchasedSubdomainLabel
+              ? this.props.purchasedSubdomainLabel
+              : publicName
+          }
           onChange={this.handlePublicNameChange}
           onKeyDown={this.handlePublicNameKeyDown}
           onFocus={this.setTemporaryPublicNameTouched}
@@ -331,31 +350,47 @@ class AccountAddress extends React.Component<Props, State> {
           </label>
         )}
       </React.Fragment>
-    ) : isComplete ? (
-      <div className="AccountInfo-public-name-wrapper">
-        <div className="AccountInfo-public-name-section help-block">
-          <label className="AccountInfo-public-name-label">{publicName}</label>
-          <i className="AccountInfo-public-name-status-icon fa fa-check is-valid help-block" />
-          <span className="AccountInfo-public-name-status-label is-valid help-block">
-            {translate('ENS_PUBLIC_NAME_PUBLIC')}
-          </span>
-          <i
-            className="AccountInfo-public-name-status-refresh fa fa-refresh is-valid help-block"
-            onClick={this.refreshAddressResolution}
-          />
-        </div>
-      </div>
     ) : (
       <div className="AccountInfo-public-name-wrapper">
-        <div className="AccountInfo-public-name-section help-block">
-          <label className="AccountInfo-public-name-label">{publicName}</label>
-          <div className="AccountInfo-public-name-status-icon-resolving is-semivalid help-block">
-            <Spinner />
-          </div>
-          <span className="AccountInfo-public-name-status-label-resolving is-semivalid help-block">
-            {translate('ENS_PUBLIC_NAME_RESOLVING')}
-          </span>
-        </div>
+        <label className="AccountInfo-public-name-label">
+          {showPurchase ? (
+            <React.Fragment>
+              {this.props.purchasedSubdomainLabel}
+              <div className="AccountInfo-public-name-status">
+                <i className="AccountInfo-public-name-status-icon fa fa-remove is-invalid help-block" />
+                <span className="AccountInfo-public-name-status-label is-invalid help-block">
+                  {translate('ENS_PUBLIC_NAME_EMPTY')}
+                </span>
+              </div>
+            </React.Fragment>
+          ) : isComplete ? (
+            <React.Fragment>
+              {publicName}
+              <div className="AccountInfo-public-name-status">
+                <i className="AccountInfo-public-name-status-icon fa fa-check is-valid help-block" />
+                <span className="AccountInfo-public-name-status-label is-valid help-block">
+                  {translate('ENS_PUBLIC_NAME_PUBLIC')}
+                </span>
+                <i
+                  className="AccountInfo-public-name-status-refresh fa fa-refresh is-valid help-block"
+                  onClick={this.refreshAddressResolution}
+                />
+              </div>
+            </React.Fragment>
+          ) : (
+            <React.Fragment>
+              {publicName}
+              <div className="AccountInfo-public-name-status">
+                <div className="AccountInfo-public-name-status-icon-resolving is-semivalid help-block">
+                  <Spinner />
+                </div>
+                <span className="AccountInfo-public-name-status-label-resolving is-semivalid help-block">
+                  {translate('ENS_PUBLIC_NAME_RESOLVING')}
+                </span>
+              </div>
+            </React.Fragment>
+          )}
+        </label>
       </div>
     );
   };
@@ -391,7 +426,13 @@ class AccountAddress extends React.Component<Props, State> {
   };
 
   private generatePublicNameButton = () => {
-    const { editingPublicName, publicNameExists, publicNameError, setNameMode } = this.state;
+    const {
+      editingPublicName,
+      publicNameExists,
+      publicNameError,
+      setNameMode,
+      showPurchase
+    } = this.state;
     const publicNameButton = editingPublicName ? (
       publicNameError ? null : (
         <React.Fragment>
@@ -414,17 +455,37 @@ class AccountAddress extends React.Component<Props, State> {
           {translate('ENS_PUBLIC_NAME_TX_WAIT')}
         </span>
       </React.Fragment>
-    ) : (
+    ) : this.insufficientEtherBalance() ? null : showPurchase ? (
+      <React.Fragment>
+        <i className="fa fa-upload" />
+        <span
+          role="button"
+          title={translateRaw('SET_PUBLIC_NAME')}
+          onClick={this.startEditingPublicName}
+        >
+          {translateRaw('SET_PUBLIC_NAME')}
+        </span>
+      </React.Fragment>
+    ) : publicNameExists ? (
       <React.Fragment>
         <i className="fa fa-pencil" />
         <span
           role="button"
-          title={
-            publicNameExists ? translateRaw('EDIT_PUBLIC_NAME') : translateRaw('ADD_PUBLIC_NAME')
-          }
+          title={translateRaw('EDIT_PUBLIC_NAME')}
           onClick={this.startEditingPublicName}
         >
-          {publicNameExists ? translate('EDIT_PUBLIC_NAME') : translate('ADD_PUBLIC_NAME')}
+          {translate('EDIT_PUBLIC_NAME')}
+        </span>
+      </React.Fragment>
+    ) : (
+      <React.Fragment>
+        <i className="fa fa-upload" />
+        <span
+          role="button"
+          title={translateRaw('ADD_PUBLIC_NAME')}
+          onClick={this.startEditingPublicName}
+        >
+          {translate('ADD_PUBLIC_NAME')}
         </span>
       </React.Fragment>
     );
@@ -554,6 +615,20 @@ class AccountAddress extends React.Component<Props, State> {
 
   /**
    *
+   * @desc Calculates the cost of the setName transaction and compares that to the available
+   * balance in the user's wallet. Returns true if the balance is insufficient to make the purchase
+   * @returns {boolean}
+   */
+  private insufficientEtherBalance = (): boolean => {
+    const { gasEstimates, etherBalance } = this.props;
+    const txCost = gasPriceToBase(!!gasEstimates ? gasEstimates.fast : 20).mul(
+      handleValues(this.state.setNameGasLimit)
+    );
+    return !!etherBalance && txCost.gt(etherBalance);
+  };
+
+  /**
+   *
    * @desc Sets the tx fields after user clicks button or presses enter
    */
   private setName = () => {
@@ -649,7 +724,7 @@ class AccountAddress extends React.Component<Props, State> {
    * @returns {string}
    */
   private getTxGasLimit = (): string => {
-    return bufferToHex(new BN('105875'));
+    return bufferToHex(this.state.setNameGasLimit);
   };
 
   /**
@@ -768,13 +843,35 @@ class AccountAddress extends React.Component<Props, State> {
    * refresh the account's balance, and refresh the address' reverse resolved data
    */
   private setNameComplete = () => {
-    const { refreshBalance } = this.props;
+    const { refreshBalance, address } = this.props;
     this.closeTxBroadcastedNotification();
     this.showTxConfirmedNotification();
-    this.setState({ setNameMode: false }, () => {
+    this.setState({ showPurchase: false, setNameMode: false }, () => {
       refreshBalance();
-      setTimeout(this.refreshAddressResolution, 3000);
+      this.resolveNameUpdate(address, this.state.temporaryPublicName);
     });
+  };
+
+  /**
+   *
+   * @desc continually refreshes the reverse resolution data until the data shows ownership or the ttl has been reached.
+   */
+  private resolveNameUpdate = (addressToCheck: string, name: string, ttl: number = 35) => {
+    const req = this.props.addressRequests[addressToCheck];
+    const requestSuccessful =
+      !!req && !!req.data && req.state === ensAddressRequestsTypes.RequestStates.success;
+    const nameUpdated = requestSuccessful ? (req.data as IBaseAddressRequest).name === name : false;
+
+    if (ttl > 0) {
+      if (!requestSuccessful) {
+        setTimeout(() => this.resolveNameUpdate(addressToCheck, name, ttl - 1), 250);
+      } else if (!nameUpdated) {
+        this.refreshAddressResolution();
+        setTimeout(() => this.resolveNameUpdate(addressToCheck, name, ttl - 1), 350);
+      }
+    } else {
+      setTimeout(this.refreshAddressResolution, 3000);
+    }
   };
 
   /**
@@ -782,8 +879,8 @@ class AccountAddress extends React.Component<Props, State> {
    * @desc Refresh the reverse resolution data for the address
    */
   private refreshAddressResolution = () => {
-    const { reverseResolveAddressRequested, address } = this.props;
-    reverseResolveAddressRequested(address, true);
+    const { reverseResolve, address } = this.props;
+    reverseResolve(address, true);
   };
 
   /**
@@ -870,12 +967,13 @@ const mapStateToProps: MapStateToProps<StateProps, {}, AppState> = (
 ) => {
   const labelEntry = addressBookSelectors.getAddressLabelEntryFromAddress(state, ownProps.address);
   return {
+    etherBalance: walletSelectors.getEtherBalance(state),
+    gasEstimates: gasSelectors.getEstimates(state),
     addressRequests: state.ens.addressRequests,
     isResolving: ensSelectors.getResolvedAddress(state),
     networkConfig: configSelectors.getNetworkConfig(state),
     entry: addressBookSelectors.getAccountAddressEntry(state),
     addressLabel: labelEntry ? labelEntry.label : '',
-    gasEstimates: gasSelectors.getEstimates(state),
     nonceStatus: transactionNetworkSelectors.getNetworkStatus(state).getNonceStatus,
     gasEstimation: transactionNetworkSelectors.getNetworkStatus(state).gasEstimationStatus,
     autoGasLimit: configMetaSelectors.getAutoGasLimitEnabled(state),
@@ -891,7 +989,7 @@ const mapStateToProps: MapStateToProps<StateProps, {}, AppState> = (
 };
 
 const mapDispatchToProps: DispatchProps = {
-  reverseResolveAddressRequested: ensActions.reverseResolveAddressRequested,
+  reverseResolve: ensActions.reverseResolveAddressRequested,
   changeAddressLabelEntry: addressBookActions.changeAddressLabelEntry,
   saveAddressLabelEntry: addressBookActions.saveAddressLabelEntry,
   removeAddressLabelEntry: addressBookActions.removeAddressLabelEntry,
