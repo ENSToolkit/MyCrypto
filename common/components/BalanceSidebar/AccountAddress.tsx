@@ -93,7 +93,7 @@ interface State {
   publicName: string;
   publicNameError: boolean;
   temporaryPublicName: string;
-  reverseRegistrarInstance: Contract;
+  reverseRegistrar: Contract;
   showModal: boolean;
   setNameMode: boolean;
   pollInitiated: boolean;
@@ -114,7 +114,7 @@ class AccountAddress extends React.Component<Props, State> {
     publicName: '',
     publicNameError: false,
     temporaryPublicName: '',
-    reverseRegistrarInstance: ENS.reverse,
+    reverseRegistrar: ENS.reverse,
     showModal: false,
     setNameMode: false,
     pollInitiated: false,
@@ -239,24 +239,29 @@ class AccountAddress extends React.Component<Props, State> {
           </div>
           <div className="AccountInfo-address-wrapper">
             {publicNameExists || showPurchase || editingPublicName ? (
-              <AccountPublicNameContent
-                address={address}
-                showPurchase={showPurchase}
-                publicName={publicName}
-                editingPublicName={editingPublicName}
-                isComplete={isComplete}
-                purchasedSubdomainLabel={purchasedSubdomainLabel}
-                setName={this.setName}
-                setPublicNameRef={this.setPublicNameRef}
-                stopEditingPublicName={this.stopEditingPublicName}
-              />
+              <React.Fragment>
+                <AccountPublicNameContent
+                  address={address}
+                  showPurchase={showPurchase}
+                  publicName={publicName}
+                  editingPublicName={editingPublicName}
+                  isComplete={isComplete}
+                  purchasedSubdomainLabel={purchasedSubdomainLabel}
+                  setPublicNameRef={this.setPublicNameRef}
+                  stopEditingPublicName={this.stopEditingPublicName}
+                  temporaryPublicNameUpdated={this.temporaryPublicNameUpdated}
+                  handlePublicNameContentBlur={this.handlePublicNameContentBlur}
+                />
+              </React.Fragment>
             ) : (
-              <AccountLabelContent
-                editingLabel={editingLabel}
-                address={address}
-                stopEditingLabel={this.stopEditingLabel}
-                setLabelInputRef={this.setLabelInputRef}
-              />
+              <React.Fragment>
+                <AccountLabelContent
+                  editingLabel={editingLabel}
+                  address={address}
+                  stopEditingLabel={this.stopEditingLabel}
+                  setLabelInputRef={this.setLabelInputRef}
+                />
+              </React.Fragment>
             )}
             <div className={addressClassName}>
               <Address address={address} />
@@ -270,23 +275,29 @@ class AccountAddress extends React.Component<Props, State> {
                 <span>{translateRaw(copied ? 'COPIED' : 'COPY_ADDRESS')}</span>
               </div>
             </CopyToClipboard>
-            <AccountLabelButton
-              buttonTitle={addressLabel ? 'EDIT_LABEL' : 'ADD_LABEL_9'}
-              editingLabel={editingLabel}
-              startEditingLabel={this.startEditingLabel}
-              stopEditingLabel={this.stopEditingLabel}
-            />
+            {publicNameExists || showPurchase ? null : (
+              <React.Fragment>
+                <AccountLabelButton
+                  buttonTitle={addressLabel ? 'EDIT_LABEL' : 'ADD_LABEL_9'}
+                  editingLabel={editingLabel}
+                  startEditingLabel={this.startEditingLabel}
+                  stopEditingLabel={this.stopEditingLabel}
+                />
+              </React.Fragment>
+            )}
             {networkConfig.chainId === 1 ? (
-              <AccountPublicNameButton
-                editingPublicName={editingPublicName}
-                publicNameExists={publicNameExists}
-                publicNameError={publicNameError}
-                setNameMode={setNameMode}
-                showPurchase={showPurchase}
-                setNameGasLimit={this.state.setNameGasLimit}
-                startEditingPublicName={this.startEditingPublicName}
-                stopEditingPublicName={this.stopEditingPublicName}
-              />
+              <React.Fragment>
+                <AccountPublicNameButton
+                  editingPublicName={editingPublicName}
+                  publicNameExists={publicNameExists}
+                  publicNameError={publicNameError}
+                  setNameMode={setNameMode}
+                  showPurchase={showPurchase}
+                  setNameGasLimit={this.state.setNameGasLimit}
+                  startEditingPublicName={this.startEditingPublicName}
+                  stopEditingPublicName={this.stopEditingPublicName}
+                />
+              </React.Fragment>
             ) : null}
             <ConfirmationModal
               isOpen={!signaturePending && signedTx && this.state.showModal}
@@ -325,17 +336,35 @@ class AccountAddress extends React.Component<Props, State> {
 
   private stopEditingLabel = () => this.setState({ editingLabel: false });
 
-  private stopEditingPublicName = () => this.setState({ editingPublicName: false });
+  private handlePublicNameContentBlur = () => {
+    this.setState({ editingPublicName: false });
+  };
+
+  private stopEditingPublicName = () => {
+    const { publicName, temporaryPublicName } = this.state;
+    this.setState({ editingPublicName: false });
+    if (
+      temporaryPublicName !== publicName &&
+      temporaryPublicName &&
+      temporaryPublicName.length > 0
+    ) {
+      this.setName();
+    }
+  };
 
   private setLabelInputRef = (node: HTMLInputElement) => (this.labelInput = node);
 
   private setPublicNameRef = (node: HTMLInputElement) => (this.publicNameInput = node);
 
+  private temporaryPublicNameUpdated = (name: string) => {
+    this.setState({ temporaryPublicName: name });
+  };
+
   /**
    *
    * @desc Sets the tx fields after user clicks button or presses enter
    */
-  private setName = (name: string) => {
+  private setName = () => {
     const { autoGasLimit, toggleAutoGasLimit, gasEstimation } = this.props;
     const gasEstimateRequested = gasEstimation === transactionNetworkTypes.RequestStatus.REQUESTED;
     if (autoGasLimit) {
@@ -347,8 +376,7 @@ class AccountAddress extends React.Component<Props, State> {
     this.setState(
       {
         setNameMode: true,
-        pollInitiated: false,
-        temporaryPublicName: name
+        pollInitiated: false
       },
       () => this.setTxFields()
     );
@@ -409,8 +437,8 @@ class AccountAddress extends React.Component<Props, State> {
    * @returns {string}
    */
   private getTxData = (): string => {
-    const { reverseRegistrarInstance, temporaryPublicName } = this.state;
-    return reverseRegistrarInstance.setName.encodeInput({ name: temporaryPublicName });
+    const { reverseRegistrar, temporaryPublicName } = this.state;
+    return reverseRegistrar.setName.encodeInput({ name: temporaryPublicName });
   };
 
   /**

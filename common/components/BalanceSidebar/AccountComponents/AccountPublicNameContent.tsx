@@ -19,11 +19,12 @@ interface OwnProps {
   setName(name: string): void;
   setPublicNameRef(node: HTMLInputElement): HTMLInputElement;
   stopEditingPublicName(): void;
+  temporaryPublicNameUpdated(name: string): void;
+  handlePublicNameContentBlur(): void;
 }
 
 interface State {
   publicNameError: boolean;
-  temporaryPublicName: string;
   publicNameInputTouched: boolean;
 }
 
@@ -32,7 +33,6 @@ type Props = DispatchProps & OwnProps;
 class AccountPublicNameContentClass extends React.Component<Props, State> {
   public state = {
     publicNameError: false,
-    temporaryPublicName: '',
     publicNameInputTouched: false
   };
 
@@ -42,23 +42,21 @@ class AccountPublicNameContentClass extends React.Component<Props, State> {
       isComplete,
       showPurchase,
       setPublicNameRef,
-      editingPublicName
+      editingPublicName,
+      purchasedSubdomainLabel
     } = this.props;
     const { publicNameError } = this.state;
+    const inputFieldValue =
+      showPurchase && !!purchasedSubdomainLabel ? purchasedSubdomainLabel : publicName;
     return editingPublicName ? (
       <React.Fragment>
         <Input
           title={translateRaw('ADD_PUBLIC_NAME')}
           placeholder={translateRaw('NEW_PUBLIC_NAME')}
-          defaultValue={
-            showPurchase && !!this.props.purchasedSubdomainLabel
-              ? this.props.purchasedSubdomainLabel
-              : publicName
-          }
+          defaultValue={inputFieldValue}
           onChange={this.handlePublicNameChange}
           onKeyDown={this.handlePublicNameKeyDown}
-          onFocus={this.setTemporaryPublicNameTouched}
-          onBlur={this.handlePublicNameBlur}
+          onBlur={this.props.handlePublicNameContentBlur}
           showInvalidBeforeBlur={true}
           setInnerRef={setPublicNameRef}
           isValid={!publicNameError}
@@ -74,7 +72,7 @@ class AccountPublicNameContentClass extends React.Component<Props, State> {
         <label className="AccountInfo-public-name-label">
           {showPurchase ? (
             <React.Fragment>
-              {this.props.purchasedSubdomainLabel}
+              {purchasedSubdomainLabel}
               <div className="AccountInfo-public-name-status">
                 <i className="AccountInfo-public-name-status-icon fa fa-remove is-invalid help-block" />
                 <span className="AccountInfo-public-name-status-label is-invalid help-block">
@@ -117,42 +115,24 @@ class AccountPublicNameContentClass extends React.Component<Props, State> {
   private handlePublicNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const temporaryPublicName = e.target.value;
     const err = typeof temporaryPublicName !== 'string';
-    this.setState({
-      publicNameError: err,
-      temporaryPublicName
-    });
+    this.props.temporaryPublicNameUpdated(temporaryPublicName);
+    this.setState({ publicNameError: err });
   };
 
   private handlePublicNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     switch (e.key) {
       case 'Enter':
-        return this.handlePublicNameBlur();
-      case 'Escape':
         return this.props.stopEditingPublicName();
+      case 'Escape':
+        return this.handleEscape();
     }
   };
 
-  private setTemporaryPublicNameTouched = () => {
-    const { publicNameInputTouched } = this.state;
-    if (!publicNameInputTouched) {
-      this.setState({ publicNameInputTouched: true });
-    }
+  private handleEscape = () => {
+    const { publicName, temporaryPublicNameUpdated, handlePublicNameContentBlur } = this.props;
+    temporaryPublicNameUpdated(publicName);
+    handlePublicNameContentBlur();
   };
-
-  private handlePublicNameBlur = () => {
-    const { temporaryPublicName } = this.state;
-    const { publicName } = this.props;
-    this.clearTemporaryPublicNameTouched();
-    this.props.stopEditingPublicName();
-    if (temporaryPublicName === publicName) {
-      return;
-    }
-    if (temporaryPublicName && temporaryPublicName.length > 0) {
-      this.props.setName(temporaryPublicName);
-    }
-  };
-
-  private clearTemporaryPublicNameTouched = () => this.setState({ publicNameInputTouched: false });
 
   /**
    *

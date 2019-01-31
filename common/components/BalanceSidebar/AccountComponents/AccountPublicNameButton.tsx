@@ -45,7 +45,7 @@ class AccountPublicNameButtonClass extends React.Component<Props> {
           <span
             role="button"
             title={translateRaw('SAVE_PUBLIC_NAME')}
-            onClick={stopEditingPublicName}
+            onMouseDown={stopEditingPublicName}
           >
             {translate('SAVE_PUBLIC_NAME')}
           </span>
